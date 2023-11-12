@@ -1,13 +1,11 @@
 import pymongo, os
 from config import DB_URI, DB_NAME
 
-tokens_collection = database["tokens"]
-
 #-------------------------------------
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
-
+tokens_collection = database["tokens"]
 user_data = database['users']
 
 
