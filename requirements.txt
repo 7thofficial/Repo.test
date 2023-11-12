@@ -5,5 +5,6 @@ pyromod==1.5
 # --- For-Database ------------ #
 pymongo
 dnspython
+motor
 # --- For-Web-Response ------- #
 aiohttp
