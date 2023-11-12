@@ -58,24 +58,6 @@ async def get_stored_token(user_id):
 
 # ... (rest of your existing code)
 
-
-
-# Token verification process
-@Bot.on_message(filters.command("check"))
-async def check_command(client: Client, message: Message):
-    user_id = message.from_user.id
-
-    # Check if the user is in the database
-    if await present_user(user_id):
-        # Check if the user has a valid token
-        if await user_has_valid_token(user_id):
-            stored_token = await get_stored_token(user_id)
-            await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.")
-        else:
-            await message.reply(f"You don't have a valid token.Your token is: `{token}` Use /check to verify.")
-    else:
-        await message.reply("You haven't connected yet. Use /start to initiate the connection process.")
-
 # Inside the "start_command" function
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
@@ -93,15 +75,25 @@ async def start_command(client: Client, message: Message):
             await message.reply("You have a valid token. Use /check to verify.")
         else:
             await message.reply(f"Please provide a token using /token `{token}`.")
-    else:
-        # Assign a token to the user
-        unused_token = await get_unused_token()
-        if unused_token:
-            token = unused_token["token"]
-            user_collection.insert_one({"user_id": user_id, "token": token})
-            await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
+    return  # Fix: Remove extra else
+
+# Inside the "check_command" function
+@Bot.on_message(filters.command("check"))
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Check if the user is in the database
+    if await present_user(user_id):
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            stored_token = await get_stored_token(user_id)
+            await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.")
         else:
-            await message.reply("Sorry, no available tokens at the moment. Try again later.")
+            await message.reply("You don't have a valid token. Please use /token {your_token} to generate one.")
+    else:
+        await message.reply("You haven't connected yet. Use /start to initiate the connection process.")
+        
+
 
 @Bot.on_message(filters.command("token"))
 async def token_command(client: Client, message: Message):
