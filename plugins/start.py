@@ -31,7 +31,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # Define the start command to generate or verify a token
 async def start_command(client: Client, message: Message):
-    user_id = client.message.from_user.id
+    user_id = message.from_user.id
     user_token = await get_stored_token(user_id)
 
     if user_token:
@@ -39,28 +39,28 @@ async def start_command(client: Client, message: Message):
         if await is_token_expired(user_id):
             # Token expired, generate a new one for verification
             new_token = await generate_token(user_id)
-            client.message.reply_text(f"Your previous token has expired. Your new token is: {new_token}")
+            message.reply_text(f"Your previous token has expired. Your new token is: {new_token}")
         else:
-            client.message.reply_text(f"You have a valid token: {user_token}. Use /check to verify.")
+            message.reply_text(f"You have a valid token: {user_token}. Use /check to verify.")
     else:
         # No token found, generate a new one for verification
         new_token = await generate_token(user_id)
-        client.message.reply_text(f"Welcome! Your token for verification is: {new_token}")
+        message.reply_text(f"Welcome! Your token for verification is: {new_token}")
 
 
 
 # Define a command to check user's token
 
-async def check(client: Client, context: CallbackContext) -> None:
-    user_id = client.message.from_user.id
+async def check(client: Client, message: Message) -> None:
+    user_id = message.from_user.id
     user_token = context.args[0] if context.args else None
 
     # Check if the provided token is valid
     if await is_valid_token(user_id, user_token):
-        client.message.reply_text("Token is valid! Verification successful.")
+        message.reply_text("Token is valid! Verification successful.")
         await reset_token_verification(user_id)
     else:
-        client.message.reply_text("Token is invalid. Please check and try again.")
+        message.reply_text("Token is invalid. Please check and try again.")
         
 # Function to generate a unique token for a user
 async def generate_token(user_id):
