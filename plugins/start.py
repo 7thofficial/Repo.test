@@ -30,34 +30,10 @@ TOKEN_EXPIRATION_PERIOD = 86400
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # Define the start command to generate or verify a token
-async def start(update: Update, context: CallbackContext) -> None:
-    user_id = update.message.from_user.id
-    user_token = await get_stored_token(user_id)
 
-    if user_token:
-        # Check if the token is expired
-        if await is_token_expired(user_id):
-            # Token expired, generate a new one for verification
-            new_token = await generate_token(user_id)
-            update.message.reply_text(f"Your previous token has expired. Your new token is: {new_token}")
-        else:
-            update.message.reply_text(f"You have a valid token: {user_token}. Use /check to verify.")
-    else:
-        # No token found, generate a new one for verification
-        new_token = await generate_token(user_id)
-        update.message.reply_text(f"Welcome! Your token for verification is: {new_token}")
 
 # Define a command to check user's token
-async def check(update: Update, context: CallbackContext) -> None:
-    user_id = update.message.from_user.id
-    user_token = context.args[0] if context.args else None
 
-    # Check if the provided token is valid
-    if await is_valid_token(user_id, user_token):
-        update.message.reply_text("Token is valid! Verification successful.")
-        await reset_token_verification(user_id)
-    else:
-        update.message.reply_text("Token is invalid. Please check and try again.")
 
 # Function to generate a unique token for a user
 async def generate_token(user_id):
@@ -90,14 +66,31 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
-#=====================================================================================##
 
-# The rest of your code remains the same...
+#😑😑😑...
+
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
+async def start_command(client: Client, message: Message):
+    user_id = client.message.from_user.id
+    user_token = await get_stored_token(user_id)
+
+    if user_token:
+        # Check if the token is expired
+        if await is_token_expired(user_id):
+            # Token expired, generate a new one for verification
+            new_token = await generate_token(user_id)
+            client.message.reply_text(f"Your previous token has expired. Your new token is: {new_token}")
+        else:
+            client.message.reply_text(f"You have a valid token: {user_token}. Use /check to verify.")
+    else:
+        # No token found, generate a new one for verification
+        new_token = await generate_token(user_id)
+        client.message.reply_text(f"Welcome! Your token for verification is: {new_token}")
 
 
+# Define a command to check user's token
 
-
-#=====================================================================================##
+#😐😐
 
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
