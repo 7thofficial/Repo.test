@@ -1,8 +1,6 @@
 import pymongo, os
 from config import DB_URI, DB_NAME
 
-user_collection = db["users"]
-
 tokens_collection = database["tokens"]
 
 #-------------------------------------
