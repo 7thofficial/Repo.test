@@ -22,7 +22,7 @@ tokens_collection = database["tokens"]
 user_data = database['users']
 
 # Token expiration period (1 day in seconds)
-TOKEN_EXPIRATION_PERIOD = 86400
+TOKEN_EXPIRATION_PERIOD = 86
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
