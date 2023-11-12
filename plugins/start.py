@@ -8,20 +8,13 @@ import random
 from bot import Bot
 from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
 from helper_func import subscribed, encode, decode, get_messages
-from database.database import add_user, del_user, full_userbase, present_user ,tokens_collection , database, dbclient
+from database.database import add_user, del_user, full_userbase, present_user ,tokens_collection
 import logging
 import asyncio
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from datetime import datetime, timedelta
 import secrets
-
-# Set your MongoDB connection URL
-# Connect to MongoDB
-
-# Set your API ID and API Hash
-API_ID = "22046181"
-API_HASH = "54a82e965ae136785450fc8c2beaaede"
 
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86400
@@ -278,18 +271,3 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
         msg = await message.reply(REPLY_ERROR)
         await asyncio.sleep(8)
         await msg.delete()
-
-
-def main():
-    updater = Updater(API_ID, API_HASH, use_context=True)
-    dp = updater.dispatcher
-
-    # Your existing handlers
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("check", check))
-
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
