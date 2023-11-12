@@ -6,24 +6,18 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 import random
 from bot import Bot
-from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
 from helper_func import subscribed, encode, decode, get_messages
-from database.database import add_user, del_user, full_userbase, present_user
+from database.database import add_user, del_user, full_userbase, present_user ,tokens_collection , database, dbclient
 import logging
 import asyncio
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from pymongo import MongoClient
 from datetime import datetime, timedelta
 import secrets
 
 # Set your MongoDB connection URL
-MONGODB_URL = "mongodb+srv://Cluster0:Cluster0@cluster0.c07xkuf.mongodb.net/?retryWrites=true&w=majority"
-
 # Connect to MongoDB
-client = MongoClient(MONGODB_URL)
-db = client["Cluster0"]
-tokens_collection = db["tokens"]
 
 # Set your API ID and API Hash
 API_ID = "22046181"
