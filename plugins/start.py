@@ -78,7 +78,6 @@ async def start_command(client: Client, message: Message):
     return  # Fix: Remove extra else
     
 # Inside the "check_command" function
-# Inside the "check_command" function
 @Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -87,18 +86,29 @@ async def check_command(client: Client, message: Message):
     if await present_user(user_id):
         # Check if the user has a valid token
         if await user_has_valid_token(user_id):
-            stored_token = await get_stored_token(user_id)
-            await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.")
+            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+            expiration_time = stored_token_info.get("expiration_time")
+            stored_token = stored_token_info.get("token")
+
+            if expiration_time and expiration_time > datetime.now():
+                remaining_time = expiration_time - datetime.now()
+                user = message.from_user
+                username = f"@{user.username}" if user.username else "not set"
+                await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
+            else:
+                # Generate a new token for the user
+                new_token = await generate_token(user_id)
+                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
         else:
             # Generate a new token for the user
             new_token = await generate_token(user_id)
-            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`. Use /connect {new_token} to complete the connection process.")
+            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
     else:
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`. Use /connect {new_token} to complete the connection process.")
-
+        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
+        
 
 
 @Bot.on_message(filters.command("token"))
