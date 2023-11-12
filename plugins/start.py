@@ -51,7 +51,7 @@ async def start_command(client: Client, message: Message):
 
 # Define a command to check user's token
 
-async def check(update: Update, context: CallbackContext) -> None:
+async def check(client: Client, context: CallbackContext) -> None:
     user_id = client.message.from_user.id
     user_token = context.args[0] if context.args else None
 
