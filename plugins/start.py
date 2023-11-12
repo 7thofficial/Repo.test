@@ -61,15 +61,33 @@ async def get_stored_token(user_id):
 
 
 # Token verification process
+@Bot.on_message(filters.command("check"))
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
 
+    # Check if the user is in the database
+    if await present_user(user_id):
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            stored_token = await get_stored_token(user_id)
+            await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.")
+        else:
+            await message.reply("You don't have a valid token. Please use /token {your_token} to generate one.")
+    else:
+        await message.reply("You haven't connected yet. Use /start to initiate the connection process.")
+
+# Inside the "start_command" function
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
     # Check if the user is already in the database
-    user_entry = user_collection.find_one({"user_id": user_id})
-
-    if user_entry:
+    if not await present_user(user_id):
+        # Generate a new token for the user
+        token = await generate_token(user_id)
+        await add_user(user_id)
+        await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
+    else:
         # Check if the user has a valid token
         if await user_has_valid_token(user_id):
             await message.reply("You have a valid token. Use /check to verify.")
