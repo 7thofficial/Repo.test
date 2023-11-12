@@ -78,6 +78,7 @@ async def start_command(client: Client, message: Message):
     return  # Fix: Remove extra else
     
 # Inside the "check_command" function
+# Inside the "check_command" function
 @Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -91,12 +92,14 @@ async def check_command(client: Client, message: Message):
         else:
             # Generate a new token for the user
             new_token = await generate_token(user_id)
-            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`. Use /token {new_token} to connect.")
+            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`. Use /connect {new_token} to complete the connection process.")
     else:
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`. Use /token {new_token} to connect.")
+        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`. Use /connect {new_token} to complete the connection process.")
+
+
 
 @Bot.on_message(filters.command("token"))
 async def token_command(client: Client, message: Message):
