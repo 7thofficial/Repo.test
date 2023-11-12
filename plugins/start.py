@@ -130,7 +130,7 @@ async def stop_process_callback(client: Client, query: CallbackQuery):
     user_collection.delete_one({"user_id": user_id})
 
 # ... (rest of your existing code)
-
+# Inside the "start_command" function
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
