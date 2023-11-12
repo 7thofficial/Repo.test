@@ -50,11 +50,10 @@ async def start_command(client: Client, message: Message):
 
 
 # Define a command to check user's token
-
-async def check(client: Client, message: Message) -> None:
+async def check(client: Client, message: Message, context):
     user_id = message.from_user.id
     user_token = context.args[0] if context.args else None
-
+  
     # Check if the provided token is valid
     if await is_valid_token(user_id, user_token):
         message.reply_text("Token is valid! Verification successful.")
