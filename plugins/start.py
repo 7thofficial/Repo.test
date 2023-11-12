@@ -8,7 +8,7 @@ import random
 from bot import Bot
 from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
 from helper_func import subscribed, encode, decode, get_messages
-from database.database import add_user, del_user, full_userbase, present_user ,database
+from database.database import add_user, del_user, full_userbase, present_user
 import logging
 import asyncio
 from telegram import Update
@@ -16,7 +16,12 @@ from telegram.ext import Updater, CommandHandler, CallbackContext
 from datetime import datetime, timedelta
 import secrets
 
+#-------------------------------------
+
+dbclient = pymongo.MongoClient(DB_URI)
+database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
+user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86400
 
