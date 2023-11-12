@@ -72,7 +72,7 @@ async def check_command(client: Client, message: Message):
             stored_token = await get_stored_token(user_id)
             await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.")
         else:
-            await message.reply("You don't have a valid token. Please use /token {your_token} to generate one.")
+            await message.reply(f"You don't have a valid token.Your token is: `{token}` Use /check to verify.")
     else:
         await message.reply("You haven't connected yet. Use /start to initiate the connection process.")
 
@@ -92,7 +92,7 @@ async def start_command(client: Client, message: Message):
         if await user_has_valid_token(user_id):
             await message.reply("You have a valid token. Use /check to verify.")
         else:
-            await message.reply("Please provide a token using /token {your_token}.")
+            await message.reply(f"Please provide a token using /token `{token}`.")
     else:
         # Assign a token to the user
         unused_token = await get_unused_token()
