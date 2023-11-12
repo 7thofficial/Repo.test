@@ -13,9 +13,7 @@ import logging
 from datetime import datetime, timedelta
 import secrets
 import pymongo
-from motor import motor_asyncio  # Import motor for asynchronous MongoDB operations
-
-#-------------------------------------
+from motor import motor_asyncio
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
@@ -29,75 +27,91 @@ TOKEN_EXPIRATION_PERIOD = 86400
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Define the start command to generate or verify a token
-async def start_command(client: Client, message: Message):
-    user_id = message.from_user.id
-    user_token = await get_stored_token(user_id)
+async def get_unused_token():
+    # Your logic to get an unused token
+    unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
+    return unused_token
 
-    if user_token:
-        # Check if the token is expired
-        if await is_token_expired(user_id):
-            # Token expired, generate a new one for verification
-            new_token = await generate_token(user_id)
-            message.reply_text(f"Your previous token has expired. Your new token is: {new_token}")
-        else:
-            message.reply_text(f"You have a valid token: {user_token}. Use /check to verify.")
-    else:
-        # No token found, generate a new one for verification
-        new_token = await generate_token(user_id)
-        message.reply_text(f"Welcome! Your token for verification is: {new_token}")
+async def user_has_valid_token(user_id):
+    # Your logic to check if the user has a valid token
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        expiration_time = stored_token_info.get("expiration_time")
+        return expiration_time and expiration_time > datetime.now()
+    return False
 
-
-
-# Define a command to check user's token
-async def check(client: Client, message: Message, context):
-    user_id = message.from_user.id
-    user_token = context.args[0] if context.args else None
-  
-    # Check if the provided token is valid
-    if await is_valid_token(user_id, user_token):
-        message.reply_text("Token is valid! Verification successful.")
-        await reset_token_verification(user_id)
-    else:
-        message.reply_text("Token is invalid. Please check and try again.")
-        
-# Function to generate a unique token for a user
 async def generate_token(user_id):
+    # Your logic to generate a unique token for a user
     token = secrets.token_hex(16)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
     return token
 
-# Function to check if a token is valid
-async def is_valid_token(user_id, user_token):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info and stored_token_info["token"] == user_token:
-        return not await is_token_expired(user_id)
-    return False
-
-# Function to check if a token is expired
-async def is_token_expired(user_id):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info:
-        expiration_time = stored_token_info.get("expiration_time")
-        return expiration_time and expiration_time < datetime.now()
-    return True
-
-# Function to reset the token verification process
 async def reset_token_verification(user_id):
+    # Your logic to reset the token verification process
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
 
-# Function to retrieve stored token from MongoDB
 async def get_stored_token(user_id):
+    # Your logic to retrieve stored token from MongoDB
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
+# ... (rest of your existing code)
 
-#😑😑😑...
 
-# Define a command to check user's token
 
-#😐😐
+# Token verification process
+
+@Bot.on_message(filters.command("start"))
+async def start_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Check if the user is already in the database
+    user_entry = user_collection.find_one({"user_id": user_id})
+
+    if user_entry:
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            await message.reply("You have a valid token. Use /check to verify.")
+        else:
+            await message.reply("Please provide a token using /token {your_token}.")
+    else:
+        # Assign a token to the user
+        unused_token = await get_unused_token()
+        if unused_token:
+            token = unused_token["token"]
+            user_collection.insert_one({"user_id": user_id, "token": token})
+            await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
+        else:
+            await message.reply("Sorry, no available tokens at the moment. Try again later.")
+
+@Bot.on_message(filters.command("token"))
+async def token_command(client: Client, message: Message):
+    user_id = message.from_user.id
+    user_token = message.command[1] if len(message.command) > 1 else None
+
+    # Check if the provided token is valid
+    if await user_has_valid_token(user_id):
+        await message.reply("You have already provided a valid token. Use /check to verify.")
+    elif user_token:
+        # Check if the provided token is valid
+        token_entry = token_collection.find_one({"token": user_token, "user_id": {"$exists": False}})
+        if token_entry:
+            token_collection.update_one({"_id": token_entry["_id"]}, {"$set": {"user_id": user_id}})
+            user_collection.insert_one({"user_id": user_id, "token": user_token})
+            await message.reply("Token accepted! Use /check to verify.")
+        else:
+            await message.reply("Invalid token. Please try again.")
+    else:
+        await message.reply("Please provide a token using /token {your_token}.")
+
+@Bot.on_callback_query(filters.regex("^stop_process$"))
+async def stop_process_callback(client: Client, query: CallbackQuery):
+    await query.answer("Token verification process stopped. Use /start to restart.")
+    user_id = query.from_user.id
+    user_collection.delete_one({"user_id": user_id})
+
+# ... (rest of your existing code)
 
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
