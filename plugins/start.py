@@ -10,18 +10,19 @@ from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION
 from helper_func import subscribed, encode, decode, get_messages
 from database.database import add_user, del_user, full_userbase, present_user
 import logging
-import asyncio
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
 from datetime import datetime, timedelta
 import secrets
+import pymongo
+from motor import motor_asyncio  # Import motor for asynchronous MongoDB operations
 
 #-------------------------------------
 
-dbclient = pymongo.MongoClient(DB_URI)
+# Use motor for asynchronous MongoDB operations
+dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
 user_data = database['users']
+
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86400
 
@@ -29,65 +30,71 @@ TOKEN_EXPIRATION_PERIOD = 86400
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # Define the start command to generate or verify a token
-def start(update: Update, context: CallbackContext) -> None:
+async def start(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
-    user_token = get_stored_token(user_id)
+    user_token = await get_stored_token(user_id)
 
     if user_token:
         # Check if the token is expired
-        if is_token_expired(user_id):
+        if await is_token_expired(user_id):
             # Token expired, generate a new one for verification
-            new_token = generate_token(user_id)
+            new_token = await generate_token(user_id)
             update.message.reply_text(f"Your previous token has expired. Your new token is: {new_token}")
         else:
             update.message.reply_text(f"You have a valid token: {user_token}. Use /check to verify.")
     else:
         # No token found, generate a new one for verification
-        new_token = generate_token(user_id)
+        new_token = await generate_token(user_id)
         update.message.reply_text(f"Welcome! Your token for verification is: {new_token}")
 
 # Define a command to check user's token
-def check(update: Update, context: CallbackContext) -> None:
+async def check(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
     user_token = context.args[0] if context.args else None
 
     # Check if the provided token is valid
-    if is_valid_token(user_id, user_token):
+    if await is_valid_token(user_id, user_token):
         update.message.reply_text("Token is valid! Verification successful.")
-        reset_token_verification(user_id)
+        await reset_token_verification(user_id)
     else:
         update.message.reply_text("Token is invalid. Please check and try again.")
 
 # Function to generate a unique token for a user
-def generate_token(user_id):
+async def generate_token(user_id):
     token = secrets.token_hex(16)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
+    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
     return token
 
 # Function to check if a token is valid
-def is_valid_token(user_id, user_token):
-    stored_token_info = tokens_collection.find_one({"user_id": user_id})
+async def is_valid_token(user_id, user_token):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info and stored_token_info["token"] == user_token:
-        return not is_token_expired(user_id)
+        return not await is_token_expired(user_id)
     return False
 
 # Function to check if a token is expired
-def is_token_expired(user_id):
-    stored_token_info = tokens_collection.find_one({"user_id": user_id})
+async def is_token_expired(user_id):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
         expiration_time = stored_token_info.get("expiration_time")
         return expiration_time and expiration_time < datetime.now()
     return True
 
 # Function to reset the token verification process
-def reset_token_verification(user_id):
-    tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
+async def reset_token_verification(user_id):
+    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
 
 # Function to retrieve stored token from MongoDB
-def get_stored_token(user_id):
-    stored_token_info = tokens_collection.find_one({"user_id": user_id})
+async def get_stored_token(user_id):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
+
+#=====================================================================================##
+
+# The rest of your code remains the same...
+
+
 
 
 #=====================================================================================##
