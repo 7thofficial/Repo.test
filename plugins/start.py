@@ -74,8 +74,17 @@ async def shorten_link(link):
     conn.request("POST", "/generate_link", payload, headers)
     res = conn.getresponse()
     data = res.read()
-    short_link = json.loads(data.decode("utf-8"))["short_link"]
+    
+    # Check if the response contains 'short_link'
+    response_data = json.loads(data.decode("utf-8"))
+    short_link = response_data.get("short_link")
+
+    # If 'short_link' is not present, use the original link
+    if short_link is None:
+        short_link = link
+
     return short_link
+
 
 # ... (your existing code)
 
