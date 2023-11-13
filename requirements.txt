@@ -8,3 +8,4 @@ dnspython
 motor
 # --- For-Web-Response ------- #
 aiohttp
+shortzy
