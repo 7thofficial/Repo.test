@@ -51,7 +51,7 @@ async def generate_token(user_id):
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
 
     # Generate a link with the token
-    token_link = f"https://t.me/{client.username}?token={token}"
+    token_link = f"https://t.me/Blank_s_bot?token={token}"
 
     # Shorten the token link using shortzy
     short_token_link = await shorten_link(token_link)
