@@ -14,6 +14,9 @@ from datetime import datetime, timedelta
 import secrets
 import pymongo
 from motor import motor_asyncio
+import shortzy
+import http.client
+import json
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
@@ -40,12 +43,41 @@ async def user_has_valid_token(user_id):
         return expiration_time and expiration_time > datetime.now()
     return False
 
+# Inside the "generate_token" function
 async def generate_token(user_id):
-    # Your logic to generate a unique token for a user
+    # Your existing logic to generate a unique token for a user
     token = secrets.token_hex(16)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
-    return token
+
+    # Generate a link with the token
+    token_link = f"https://t.me/{client.username}?token={token}"
+
+    # Shorten the token link using shortzy
+    short_token_link = await shorten_link(token_link)
+
+    return token, short_token_link
+
+async def shorten_link(link):
+    # Shorten the link using shortzy
+    conn = http.client.HTTPSConnection("api.shareus.io")
+    payload = json.dumps({
+        "api_key": "PUIAQBIFrydvLhIzAOeGV8yZppu2",
+        "url": link,
+        "category": "Entertainment",
+        "tags": ["trendinglinks"]
+    })
+    headers = {
+        'Keep-Alive': '',
+        'Content-Type': 'application/json'
+    }
+    conn.request("POST", "/generate_link", payload, headers)
+    res = conn.getresponse()
+    data = res.read()
+    short_link = json.loads(data.decode("utf-8"))["short_link"]
+    return short_link
+
+# ... (your existing code)
 
 async def reset_token_verification(user_id):
     # Your logic to reset the token verification process
