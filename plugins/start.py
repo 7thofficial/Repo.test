@@ -100,13 +100,13 @@ async def start_command(client: Client, message: Message):
         # Generate a new token for the user
         token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
+        await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify. v1")
     else:
         # Check if the user has a valid token
         if await user_has_valid_token(user_id):
-            await message.reply("You have a valid token. Use /check to verify.")
+            await message.reply("You have a valid token. Use /check to verify. v2")
         else:
-            await message.reply(f"Please provide a token using /token `{token}`.")
+            await message.reply(f"Please provide a token using /token `{token}`. v3")
     return  # Fix: Remove extra else
     
 # Inside the "check_command" function
@@ -126,20 +126,20 @@ async def check_command(client: Client, message: Message):
                 remaining_time = expiration_time - datetime.now()
                 user = message.from_user
                 username = f"@{user.username}" if user.username else "not set"
-                await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
+                await message.reply(f"v4 Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
             else:
                 # Generate a new token for the user
                 new_token = await generate_token(user_id)
-                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
+                await message.reply(f"v5 You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
         else:
             # Generate a new token for the user
             new_token = await generate_token(user_id)
-            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
+            await message.reply(f"v6 You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
     else:
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
+        await message.reply(f"v7 You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
         
 
 
@@ -161,7 +161,7 @@ async def token_command(client: Client, message: Message):
         else:
             await message.reply("Invalid token. Please try again.")
     else:
-        await message.reply("Please provide a token using /token {your_token}.")
+        await message.reply("Please provide a token using /token {your_token} .")
 
 @Bot.on_callback_query(filters.regex("^stop_process$"))
 async def stop_process_callback(client: Client, query: CallbackQuery):
