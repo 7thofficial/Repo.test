@@ -17,12 +17,17 @@ import pymongo
 from motor import motor_asyncio
 import http.client
 import json
+import aiohttp
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
 user_data = database['users']
+
+# Your URL shortener details
+SHORT_URL = "your_short_url"
+SHORT_API = "your_short_api_key"
 
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
@@ -64,13 +69,52 @@ async def generate_and_send_new_token(client: Client, message: Message):
     token = await generate_24h_token(user_id)
     await message.reply(f"Your new token: {token}")
 
+async def generate_and_send_new_token_with_link(client: Client, message: Message):
+    user_id = message.from_user.id
+    stored_token = await get_stored_token(user_id)
+    
+    if not stored_token:
+        # Generate a new 24h token for the user
+        token = secrets.token_hex(16)
+        expiration_time = datetime.now() + timedelta(hours=24)
+        await tokens_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"token": token, "expiration_time": expiration_time}},
+            upsert=True
+        )
+        stored_token = token
+    
+    token_link = f"https://t.me/{client.username}?token={stored_token}"
+    short_link = await get_shortlink(token_link)
+    
+    await message.reply(f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
+                        f"Use /check to verify.")
 
+async def get_shortlink(link):
+    url = f'{SHORT_URL}/api'
+    params = {'api': SHORT_API, 'url': link}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, raise_for_status=True, ssl=False) as response:
+                data = await response.json()
+                if data["status"] == "success":
+                    return data['shortenedUrl']
+                else:
+                    logger.error(f"Error: {data['message']}")
+                    return link
+    except Exception as e:
+        logger.error(e)
+        return link 
+
+# ... (other existing code)
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
     # Check if the user has a valid token
     if await user_has_valid_token(user_id):
+        await message.reply("You have a valid token. Use /check to verify.")
         # Add the user to the database if not present
         if not await present_user(user_id):
             try:
@@ -179,15 +223,25 @@ async def start_command(client: Client, message: Message):
             return
     else:
         # Handle cases where the user doesn't have a valid token
-        await generate_and_send_new_token(client, message)
-
+        await generate_and_send_new_token_with_link(client, message)
+   
 # ... (rest of your existing code)
 
 
 # ... (rest of your existing code)
 
 
-@Bot.on_message(filters.command("check"))
+
+        
+    
+#=====================================================================================##
+
+WAIT_MSG = """"<b>Processing ...</b>"""
+
+REPLY_ERROR = """<code>Use this command as a replay to any telegram message with out any spaces.</code>"""
+
+#=====================================================================================##
+
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
 
@@ -217,25 +271,14 @@ async def check_command(client: Client, message: Message):
                     f"User ID: {user_id}"
                 )
             else:
-                await generate_and_send_new_token(client, message)
+                await generate_and_send_new_token_with_link(client, message)
         else:
             await message.reply("Token is not valid. Please generate a new token.")
     else:
         await message.reply("You are not registered. Please use /start to register.")
 
 
-        
-    
-#=====================================================================================##
 
-WAIT_MSG = """"<b>Processing ...</b>"""
-
-REPLY_ERROR = """<code>Use this command as a replay to any telegram message with out any spaces.</code>"""
-
-#=====================================================================================##
-
-    
-    
 @Bot.on_message(filters.command('start') & filters.private)
 async def not_joined(client: Client, message: Message):
     buttons = [
@@ -256,7 +299,7 @@ async def not_joined(client: Client, message: Message):
         )
     except IndexError:
         pass
-
+        
     await message.reply(
         text = FORCE_MSG.format(
                 first = message.from_user.first_name,
