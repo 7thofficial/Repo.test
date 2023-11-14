@@ -26,11 +26,16 @@ tokens_collection = database["tokens"]
 user_data = database['users']
 
 # Your URL shortener details
-SHORT_URL = "your_short_url"
-SHORT_API = "your_short_api_key"
+SHORT_URL = "api.shareus.io"
+SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
 
 # Token expiration period (1 day in seconds)
-TOKEN_EXPIRATION_PERIOD = 24 * 60 * 60
+TOKEN_EXPIRATION_PERIOD = 60
+
+async def send_message(client, chat_id, text):
+    await client.send_chat_action(chat_id, "typing")
+    await asyncio.sleep(1)  # Simulate typing (optional)
+    await client.send_message(chat_id, text)
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -46,17 +51,19 @@ async def user_has_valid_token(user_id):
         return expiration_time and expiration_time > datetime.now()
     return False
 
+# Use TOKEN_EXPIRATION_PERIOD
 async def generate_24h_token(user_id):
     token = secrets.token_hex(16)
-    expiration_time = datetime.now() + timedelta(hours=24)
+    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one(
         {"user_id": user_id},
         {"$set": {"token": token, "expiration_time": expiration_time}},
         upsert=True
     )
+    # If you need the encoded token for some reason, return it
     encoded_token = base64.b64encode(token.encode()).decode()
     return encoded_token
-
+    
 async def reset_token_verification(user_id):
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
 
@@ -87,8 +94,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     token_link = f"https://t.me/{client.username}?token={stored_token}"
     short_link = await get_shortlink(token_link)
     
-    await message.reply(f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
-                        f"Use /check to verify.")
+    await send_message(client, message.from_user.id,
+                       f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
+                       f"Use /check to verify.")
 
 async def get_shortlink(link):
     url = f'{SHORT_URL}/api'
