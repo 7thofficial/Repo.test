@@ -31,12 +31,10 @@ TOKEN_EXPIRATION_PERIOD = 86
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 async def get_unused_token():
-    # Your logic to get an unused token
     unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
     return unused_token
 
 async def user_has_valid_token(user_id):
-    # Your logic to check if the user has a valid token
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
         expiration_time = stored_token_info.get("expiration_time")
@@ -44,7 +42,6 @@ async def user_has_valid_token(user_id):
     return False
 
 async def generate_24h_token(user_id):
-    # Your logic to generate a unique token for a user with 24 hours validity
     token = secrets.token_hex(16)
     expiration_time = datetime.now() + timedelta(hours=24)
     await tokens_collection.update_one(
@@ -52,37 +49,17 @@ async def generate_24h_token(user_id):
         {"$set": {"token": token, "expiration_time": expiration_time}},
         upsert=True
     )
-
-    # Encode the token using base64
-    encoded_token = base64.b64encode(token.encode()).decode()
-    return encoded_token
-
-
-async def generate_24h_token(user_id):
-    # Your logic to generate a unique token for a user with 24 hours validity
-    token = secrets.token_hex(16)
-    expiration_time = datetime.now() + timedelta(hours=24)
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token": token, "expiration_time": expiration_time}},
-        upsert=True
-    )
-
-    # Encode the token using base64
     encoded_token = base64.b64encode(token.encode()).decode()
     return encoded_token
 
 async def reset_token_verification(user_id):
-    # Your logic to reset the token verification process
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
 
 async def get_stored_token(user_id):
-    # Your logic to retrieve stored token from MongoDB
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
 async def shorten_link(original_link):
-    # Your logic to shorten the link using the shortzy API
     conn = http.client.HTTPSConnection("api.shareus.io")
     payload = json.dumps({
         "api_key": "PUIAQBIFrydvLhIzAOeGV8yZppu2",
@@ -97,28 +74,68 @@ async def shorten_link(original_link):
     short_link = json.loads(data.decode("utf-8"))["short_link"]
     return short_link
 
-# Inside the "start_command" function
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # Check if the user is already in the database
     if not await present_user(user_id):
-        # Generate a new token for the user
-        token = await generate_token(user_id)
+        encoded_token = await generate_24h_token(user_id)
         await add_user(user_id)
-        await message.reply(f"Welcome! You token is: `{token}` Use /check to verify. v1")
+        main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
+        short_link = await shorten_link(main_token_url)
+        await message.reply(f"Welcome! Your 24h token link: {short_link}. Use /check to verify.")
     else:
-        # Check if the user has a valid token
         if await user_has_valid_token(user_id):
-            await message.reply("You have a valid token. Use /check to verify. v2")
+            await message.reply("You have a valid token. Use /check to verify.")
         else:
-            await message.reply(f"Please provide a token using /token `{token}`. v3")
-    return  # Fix: Remove extra else
-    
-# ... (your existing imports)
+            await generate_and_send_new_token(client, message)
 
-# Inside the "start_command" function
+async def generate_and_send_new_token(client: Client, message: Message):
+    user_id = message.from_user.id
+    encoded_token = await generate_24h_token(user_id)
+    main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
+    short_link = await shorten_link(main_token_url)
+    await message.reply(f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
+                        f"Use /check to verify.")
+
+@Bot.on_message(filters.command("check"))
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    if await present_user(user_id):
+        if await user_has_valid_token(user_id):
+            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+            stored_token = stored_token_info["token"]
+            expiration_time = stored_token_info["expiration_time"]
+            remaining_time = expiration_time - datetime.now()
+
+            if remaining_time.total_seconds() > 0:
+                user_info = await client.get_users(user_id)
+                first_name = user_info.first_name
+                last_name = user_info.last_name
+                username = user_info.username
+                mention = user_info.mention
+                user_id = user_info.id
+
+                await message.reply_text(
+                    f"Token is valid for {int(remaining_time.total_seconds() / 3600)} hours and "
+                    f"{int((remaining_time.total_seconds() % 3600) / 60)} minutes.\n\n"
+                    f"User Details:\n"
+                    f"First Name: {first_name}\n"
+                    f"Last Name: {last_name}\n"
+                    f"Username: {username}\n"
+                    f"Mention: {mention}\n"
+                    f"User ID: {user_id}"
+                )
+            else:
+                await generate_and_send_new_token(client, message)
+        else:
+            await message.reply("Token is not valid. Please generate a new token.")
+    else:
+        await message.reply("You are not registered. Please use /start to register.")
+
+# ... (your existing code)
+
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
