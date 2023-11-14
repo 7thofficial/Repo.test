@@ -29,6 +29,23 @@ user_data = database['users']
 SHORT_URL = "api.shareus.io"
 SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
 
+async def get_shortlink(link):
+    url = f'{SHORT_URL}/api'
+    params = {'api': SHORT_API, 'url': link}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, raise_for_status=True, ssl=False) as response:
+                data = await response.json()
+                if data["status"] == "success":
+                    return data['shortenedUrl']
+                else:
+                    logger.error(f"Error: {data['message']}")
+                    return link
+    except Exception as e:
+        logger.error(e)
+        return link
+        
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 60
 
@@ -97,24 +114,8 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     await send_message(client, message.from_user.id,
                        f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
                        f"Use /check to verify.")
-
-async def get_shortlink(link):
-    url = f'{SHORT_URL}/api'
-    params = {'api': SHORT_API, 'url': link}
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, raise_for_status=True, ssl=False) as response:
-                data = await response.json()
-                if data["status"] == "success":
-                    return data['shortenedUrl']
-                else:
-                    logger.error(f"Error: {data['message']}")
-                    return link
-    except Exception as e:
-        logger.error(e)
-        return link 
-
+ 
+@Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
 
