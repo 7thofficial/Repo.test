@@ -112,6 +112,7 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
+
 async def generate_and_send_new_token(client: Client, message: Message):
     user_id = message.from_user.id
     token = await generate_24h_token(user_id)
