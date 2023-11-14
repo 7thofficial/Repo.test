@@ -69,10 +69,15 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
-        await message.reply(client, user_id, f"Here is your shortened link: {short_link}")
+        # Create an InlineKeyboardMarkup with a button leading to the shortened link
+        button = InlineKeyboardButton("Open Link", url=short_link)
+        keyboard = InlineKeyboardMarkup([[button]])
+        
+        # Send the message with the shortened link and the button
+        await message.reply(text="Here is your shortened link:", reply_markup=keyboard, disable_notification=True)
     else:
         await message.reply(client, user_id, "There was an error generating the shortened link. Please try again later.")
-
+        
 async def encode(string):
     string_bytes = string.encode("ascii")
     base64_bytes = base64.urlsafe_b64encode(string_bytes)
