@@ -73,9 +73,6 @@ async def send_message(client, chat_id, text):
     await asyncio.sleep(1)  # Simulate typing (optional)
     await client.send_message(chat_id, text)
 
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
 async def get_unused_token():
     unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
     return unused_token
@@ -127,9 +124,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
         )
         stored_token = token
     
-    token_link = f"https://t.me/{client.username}?start=token_{stored_token}"
+    url = f"https://t.me/{client.username}?start=token_{stored_token}"
     # Pass the required arguments 'short_url' and 'short_api' to get_shortlink function
-    short_link = await get_shortlink(token_link, SHORT_URL, SHORT_API)
+    short_link = await shorten_url_with_shareusio(url, SHORT_URL, SHORT_API)
     
     await send_message(client, message.from_user.id,
                        f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
