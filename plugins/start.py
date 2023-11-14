@@ -78,29 +78,120 @@ async def shorten_link(original_link):
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # Check if the user is already in the database
-    if not await present_user(user_id):
-        # Generate a new 24h token for the user
-        encoded_token = await generate_24h_token(user_id)
-        await add_user(user_id)
-        main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
-        short_link = await shorten_link(main_token_url)
-        await message.reply(f"Welcome! Your 24h token link: {short_link}. Use /check to verify.")
-    else:
-        # Check if the user has a valid token
-        if await user_has_valid_token(user_id):
-            await message.reply("You have a valid token. Use /check to verify.")
-        else:
-            # Generate a new 24h token for the user
-            await generate_and_send_new_token(client, message)
+    # Check if the user has a valid token
+    if await user_has_valid_token(user_id):
+        # Add the user to the database if not present
+        if not await present_user(user_id):
+            try:
+                await add_user(user_id)
+            except:
+                pass
 
-async def generate_and_send_new_token(client: Client, message: Message):
-    user_id = message.from_user.id
-    encoded_token = await generate_24h_token(user_id)
-    main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
-    short_link = await shorten_link(main_token_url)
-    await message.reply(f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
-                        f"Use /check to verify.")
+        # Process the command based on the message content
+        text = message.text
+        if len(text) > 7:
+            try:
+                base64_string = text.split(" ", 1)[1]
+            except:
+                return
+            string = await decode(base64_string)
+            argument = string.split("-")
+            if len(argument) == 3:
+                try:
+                    start = int(int(argument[1]) / abs(client.db_channel.id))
+                    end = int(int(argument[2]) / abs(client.db_channel.id))
+                except:
+                    return
+                if start <= end:
+                    ids = range(start, end + 1)
+                else:
+                    ids = []
+                    i = start
+                    while True:
+                        ids.append(i)
+                        i -= 1
+                        if i < end:
+                            break
+            elif len(argument) == 2:
+                try:
+                    ids = [int(int(argument[1]) / abs(client.db_channel.id))]
+                except:
+                    return
+            temp_msg = await message.reply("Please wait...")
+            try:
+                messages = await get_messages(client, ids)
+            except:
+                await message.reply_text("Something went wrong..!")
+                return
+            await temp_msg.delete()
+
+            for msg in messages:
+                if bool(CUSTOM_CAPTION) & bool(msg.document):
+                    caption = CUSTOM_CAPTION.format(
+                        previouscaption="" if not msg.caption else msg.caption.html,
+                        filename=msg.document.file_name
+                    )
+                else:
+                    caption = "" if not msg.caption else msg.caption.html
+
+                if DISABLE_CHANNEL_BUTTON:
+                    reply_markup = msg.reply_markup
+                else:
+                    reply_markup = None
+
+                try:
+                    await msg.copy(
+                        chat_id=message.from_user.id,
+                        caption=caption,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup,
+                        protect_content=PROTECT_CONTENT
+                    )
+                    await asyncio.sleep(0.5)
+                except FloodWait as e:
+                    await asyncio.sleep(e.x)
+                    await msg.copy(
+                        chat_id=message.from_user.id,
+                        caption=caption,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup,
+                        protect_content=PROTECT_CONTENT
+                    )
+                except:
+                    pass
+            return
+        else:
+            # Reply with the default message when the command doesn't match the expected format
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("😊 About Me", callback_data="about"),
+                        InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                    ],
+                    [
+                        InlineKeyboardButton("Stop Process", callback_data="about")
+                    ]
+                ]
+            )
+            await message.reply_text(
+                text=START_MSG.format(
+                    first=message.from_user.first_name,
+                    last=message.from_user.last_name,
+                    username=None if not message.from_user.username else '@' + message.from_user.username,
+                    mention=message.from_user.mention,
+                    id=message.from_user.id
+                ),
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+                quote=True
+            )
+            return
+    else:
+        # Handle cases where the user doesn't have a valid token
+        await generate_and_send_new_token(client, message)
+
+# ... (rest of your existing code)
+
 
 # ... (rest of your existing code)
 
@@ -141,142 +232,8 @@ async def check_command(client: Client, message: Message):
     else:
         await message.reply("You are not registered. Please use /start to register.")
 
-# ... (your existing code)
-
-@Bot.on_message(filters.command("start"))
-async def start_command(client: Client, message: Message):
-    user_id = message.from_user.id
-
-    # Check if the user is already in the database
-    if not await present_user(user_id):
-        # Generate a new 24h token for the user
-        encoded_token = await generate_24h_token(user_id)
-        await add_user(user_id)
-        main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
-        short_link = await shorten_link(main_token_url)
-        await message.reply(f"Welcome! Your 24h token link: {short_link}. Use /check to verify.")
-    else:
-        # Check if the user has a valid token
-        if await user_has_valid_token(user_id):
-            await message.reply("You have a valid token. Use /check to verify.")
-        else:
-            # Generate a new 24h token for the user
-            encoded_token = await generate_24h_token(user_id)
-            main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
-            short_link = await shorten_link(main_token_url)
-            await message.reply(f"Please provide a token using this link: {short_link}.\nUse /check to verify.")
-    
-# Other functions remain the same
-    # Continue with the existing logic if the token is valid
-    if not await present_user(user_id):
-        try:
-            await add_user(user_id)
-        except:
-            pass
-
-    text = message.text
-    if len(text) > 7:
-        try:
-            base64_string = text.split(" ", 1)[1]
-        except:
-            return
-        string = await decode(base64_string)
-        argument = string.split("-")
-        if len(argument) == 3:
-            try:
-                start = int(int(argument[1]) / abs(client.db_channel.id))
-                end = int(int(argument[2]) / abs(client.db_channel.id))
-            except:
-                return
-            if start <= end:
-                ids = range(start, end + 1)
-            else:
-                ids = []
-                i = start
-                while True:
-                    ids.append(i)
-                    i -= 1
-                    if i < end:
-                        break
-        elif len(argument) == 2:
-            try:
-                ids = [int(int(argument[1]) / abs(client.db_channel.id))]
-            except:
-                return
-        temp_msg = await message.reply("Please wait...")
-        try:
-            messages = await get_messages(client, ids)
-        except:
-            await message.reply_text("Something went wrong..!")
-            return
-        await temp_msg.delete()
-
-        for msg in messages:
-            if bool(CUSTOM_CAPTION) & bool(msg.document):
-                caption = CUSTOM_CAPTION.format(
-                    previouscaption="" if not msg.caption else msg.caption.html,
-                    filename=msg.document.file_name
-                )
-            else:
-                caption = "" if not msg.caption else msg.caption.html
-
-            if DISABLE_CHANNEL_BUTTON:
-                reply_markup = msg.reply_markup
-            else:
-                reply_markup = None
-
-            try:
-                await msg.copy(
-                    chat_id=message.from_user.id,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=reply_markup,
-                    protect_content=PROTECT_CONTENT
-                )
-                await asyncio.sleep(0.5)
-            except FloodWait as e:
-                await asyncio.sleep(e.x)
-                await msg.copy(
-                    chat_id=message.from_user.id,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=reply_markup,
-                    protect_content=PROTECT_CONTENT
-                )
-            except:
-                pass
-        return
-    else:
-        reply_markup = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton("😊 About Me", callback_data="about"),
-                    InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
-                ],
-                [
-                    InlineKeyboardButton("Stop Process", callback_data="about")
-                ]
-            ]
-        )
-        await message.reply_text(
-            text=START_MSG.format(
-                first=message.from_user.first_name,
-                last=message.from_user.last_name,
-                username=None if not message.from_user.username else '@' + message.from_user.username,
-                mention=message.from_user.mention,
-                id=message.from_user.id
-            ),
-            reply_markup=reply_markup,
-            disable_web_page_preview=True,
-            quote=True
-        )
-        return
-
-# ... (rest of your existing code)
 
         
-
-
     
 #=====================================================================================##
 
