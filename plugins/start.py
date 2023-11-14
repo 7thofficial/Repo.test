@@ -107,7 +107,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     if not stored_token:
         # Generate a new 24h token for the user
         token = secrets.token_hex(16)
-        expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
+        expiration_time = datetime.now() + timedelta(hours=24)
         await tokens_collection.update_one(
             {"user_id": user_id},
             {"$set": {"token": token, "expiration_time": expiration_time}},
@@ -116,11 +116,13 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
         stored_token = token
     
     token_link = f"https://t.me/{client.username}?token={stored_token}"
-    short_link = await get_shortlink(token_link)
+    # Pass the required arguments 'short_url' and 'short_api' to get_shortlink function
+    short_link = await get_shortlink(token_link, SHORT_URL, SHORT_API)
     
     await send_message(client, message.from_user.id,
                        f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
                        f"Use /check to verify.")
+
 
 @Bot.on_message(filters.private & filters.command('deleteall') & filters.user(ADMINS))
 async def delete_all_data(client: Client, message: Message):
