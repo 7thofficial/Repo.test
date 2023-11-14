@@ -60,8 +60,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     
     if not stored_token:
         # Inform the user about the missing token and how to obtain it
-        await message.reply(client, user_id, "You don't have a valid token. Please obtain a token first to proceed.")
+        await message.reply_text("You don't have a valid token. Please obtain a token first to proceed.", quote=True)
         return  # Exit the function without further processing
+    
     base64_string = await encode(f"token_{stored_token}")
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start={base64_string}"
@@ -74,9 +75,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
         keyboard = InlineKeyboardMarkup([[button]])
         
         # Send the message with the shortened link and the button
-        await message.reply(text="Here is your shortened link:", reply_markup=keyboard, disable_notification=True)
+        await message.reply_text("Here is your shortened link:", reply_markup=keyboard, disable_notification=True)
     else:
-        await message.reply(client, user_id, "There was an error generating the shortened link. Please try again later.")
+        await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
         
 async def encode(string):
     string_bytes = string.encode("ascii")
