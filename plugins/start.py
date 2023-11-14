@@ -231,17 +231,15 @@ async def start_command(client: Client, message: Message):
         if base64_decoded == stored_base64_string:
             # Matched! Proceed with the required action
             # Your logic for handling when the base64 strings match
-            else:
-                # Didn't match; continue with the tokenized URL generation and sending
+        else:
+            # Didn't match; continue with the tokenized URL generation and sending
             await generate_and_send_new_token_with_link(client, message)
-
-    
-        # Add the user to the database if not present
-        if not await present_user(user_id):
-            try:
-                await add_user(user_id)
-            except:
-                pass
+            # Add the user to the database if not present
+            if not await present_user(user_id):
+                try:
+                    await add_user(user_id)
+                except:
+                    pass
 
         # Process the command based on the message content
         text = message.text
@@ -324,7 +322,6 @@ async def start_command(client: Client, message: Message):
                         InlineKeyboardButton("😊 About Me", callback_data="about"),
                         InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
                     ]
-                  
                 ]
             )
             await message.reply_text(
@@ -343,6 +340,7 @@ async def start_command(client: Client, message: Message):
     else:
         # Handle cases where the user doesn't have a valid token
         await generate_and_send_new_token_with_link(client, message)
+        
    
 #=====================================================================================##
 
