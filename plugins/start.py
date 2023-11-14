@@ -115,6 +115,41 @@ async def get_shortlink(link):
         logger.error(e)
         return link 
 
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    if await present_user(user_id):
+        if await user_has_valid_token(user_id):
+            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+            stored_token = stored_token_info["token"]
+            expiration_time = stored_token_info["expiration_time"]
+            remaining_time = expiration_time - datetime.now()
+
+            if remaining_time.total_seconds() > 0:
+                user_info = await client.get_users(user_id)
+                first_name = user_info.first_name
+                last_name = user_info.last_name
+                username = user_info.username
+                mention = user_info.mention
+                user_id = user_info.id
+
+                await message.reply_text(
+                    f"Token is valid for {int(remaining_time.total_seconds() / 3600)} hours and "
+                    f"{int((remaining_time.total_seconds() % 3600) / 60)} minutes.\n\n"
+                    f"User Details:\n"
+                    f"First Name: {first_name}\n"
+                    f"Last Name: {last_name}\n"
+                    f"Username: {username}\n"
+                    f"Mention: {mention}\n"
+                    f"User ID: {user_id}"
+                )
+            else:
+                await generate_and_send_new_token_with_link(client, message)
+        else:
+            await message.reply("Token is not valid. Please generate a new token.")
+    else:
+        await message.reply("You are not registered. Please use /start to register.")
+        
 # ... (other existing code)
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
@@ -249,41 +284,6 @@ WAIT_MSG = """"<b>Processing ...</b>"""
 REPLY_ERROR = """<code>Use this command as a replay to any telegram message with out any spaces.</code>"""
 
 #=====================================================================================##
-
-async def check_command(client: Client, message: Message):
-    user_id = message.from_user.id
-
-    if await present_user(user_id):
-        if await user_has_valid_token(user_id):
-            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-            stored_token = stored_token_info["token"]
-            expiration_time = stored_token_info["expiration_time"]
-            remaining_time = expiration_time - datetime.now()
-
-            if remaining_time.total_seconds() > 0:
-                user_info = await client.get_users(user_id)
-                first_name = user_info.first_name
-                last_name = user_info.last_name
-                username = user_info.username
-                mention = user_info.mention
-                user_id = user_info.id
-
-                await message.reply_text(
-                    f"Token is valid for {int(remaining_time.total_seconds() / 3600)} hours and "
-                    f"{int((remaining_time.total_seconds() % 3600) / 60)} minutes.\n\n"
-                    f"User Details:\n"
-                    f"First Name: {first_name}\n"
-                    f"Last Name: {last_name}\n"
-                    f"Username: {username}\n"
-                    f"Mention: {mention}\n"
-                    f"User ID: {user_id}"
-                )
-            else:
-                await generate_and_send_new_token_with_link(client, message)
-        else:
-            await message.reply("Token is not valid. Please generate a new token.")
-    else:
-        await message.reply("You are not registered. Please use /start to register.")
 
 
 
