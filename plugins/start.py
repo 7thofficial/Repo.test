@@ -108,7 +108,7 @@ async def user_has_valid_token(user_id):
 async def reset_token_verification(user_id):
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
 
-async def get_stored_token(user_id):
+async def get_stored_token(user_id, tokens_collection):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
