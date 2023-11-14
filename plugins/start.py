@@ -62,7 +62,14 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     stored_token = await get_stored_token(user_id, tokens_collection)
     
     if not stored_token:
-        stored_token = await generate_24h_token(user_id, tokens_collection)
+        token = secrets.token_hex(16)
+        expiration_time = datetime.now() + timedelta(hours=24)
+        await tokens_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"token": token, "expiration_time": expiration_time}},
+            upsert=True
+        )
+        stored_token = token
     
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start=token_{stored_token}"
@@ -70,11 +77,20 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
-        await client.send_message(message.chat.id, f"Here is your shortened link: {short_link}", reply_to_message_id=message.message_id)
+        try:
+            # Check if message has 'message_id' attribute before replying
+            if hasattr(message, 'message_id'):
+                await message.reply(client, user_id, f"Here is your shortened link: {short_link}")
+            else:
+                # Handle the case where 'message_id' attribute is not present
+                # Add error logging or alternative action here
+                pass
+        except Exception as e:
+            # Handle specific exceptions if necessary
+            print(f"Error: {e}")
     else:
-        await client.send_message(message.chat.id, "There was an error generating the shortened link. Please try again later.", reply_to_message_id=message.message_id)
-
-
+        await message.reply(client, user_id, "There was an error generating the shortened link. Please try again later.")
+        
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
