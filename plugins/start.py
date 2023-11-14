@@ -55,7 +55,6 @@ async def generate_24h_token(user_id, tokens_collection):
     )
    
 async def generate_and_send_new_token_with_link(client: Client, message: Message):
-    uasync def generate_and_send_new_token_with_link(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token = await get_stored_token(user_id, tokens_collection)
     
