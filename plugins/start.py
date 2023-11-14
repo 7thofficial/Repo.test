@@ -1,29 +1,35 @@
 import os
 import asyncio
 import base64
-from pyrogram import Client, filters, __version__
-from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ChatAction
-from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
-import random
-from bot import Bot
-from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
-from helper_func import subscribed, encode, decode, get_messages
-from database.database import add_user, del_user, full_userbase, present_user
 import logging
-from datetime import datetime, timedelta
 import secrets
-import pymongo
-from motor import motor_asyncio
-import http.client
-import json
+from datetime import datetime, timedelta
+
 import aiohttp
 import requests
+from pyrogram import Client, filters, __version__
+from pyrogram.enums import ParseMode
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, ChatAction
+from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
+from motor import motor_asyncio
+
+from bot import Bot
+from config import (
+    DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+)
+from helper_func import subscribed, encode, decode, get_messages
+from database.database import add_user, del_user, full_userbase, present_user
+
+SHORT_URL = "api.shareus.io"
+SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
+TOKEN_EXPIRATION_PERIOD = 100
+
+logger = logging.getLogger(__name__)
 
 def shorten_url_with_shareusio(url, short_url, short_api):
     api_endpoint = f'{short_url}/api'
     params = {'api': short_api, 'url': url}
-    
+
     try:
         response = requests.get(api_endpoint, params=params)
         if response.status_code == 200:
@@ -38,49 +44,20 @@ def shorten_url_with_shareusio(url, short_url, short_api):
         print(f"Request Exception: {e}")
     return None
 
-# Usage
-long_url = 'https://www.example.com'
-short_url = 'api.shareus.io'
-short_api_key = 'PUIAQBIFrydvLhIzAOeGV8yZppu2'
+async def generate_24h_token(user_id):
+    token = secrets.token_hex(16)
+    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+    encoded_token = base64.b64encode(token.encode()).decode()
+    return encoded_token
 
-shortened_url = shorten_url_with_shareusio(long_url, short_url, short_api_key)
-if shortened_url:
-    print(f"Shortened URL: {shortened_url}")
-else:
-    print("URL shortening failed.")
+# ... (rest of your code)
 
-
-short_url = "api.shareus.io"
-short_api = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
-
-SHORT_URL = "api.shareus.io"
-SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
-
-# Configure your logger as per your logging settings
-logger = logging.getLogger(__name__)
-
-async def get_shortlink(link, short_url, short_api):
-    url = f'{short_url}/api'
-    params = {'api': short_api, 'url': link}
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as response:
-                response.raise_for_status()
-                data = await response.json()
-                
-                if data["status"] == "success":
-                    return data['shortenedUrl']
-                else:
-                    logger.error(f"Error: {data.get('message', 'Unknown error')}")
-                    return link
-    except aiohttp.ClientError as e:
-        logger.error(f"AIOHTTP Client Error: {e}")
-    except Exception as e:
-        logger.error(f"Error: {e}")
-
-    return link
-
+# Your main code here
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
