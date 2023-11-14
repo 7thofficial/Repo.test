@@ -20,8 +20,8 @@ from config import (
 from helper_func import subscribed, encode, decode, get_messages
 from database.database import add_user, del_user, full_userbase, present_user
 
-SHORT_URL = "api.shareus.io"
-SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
+SHORT_URL = "vnshortener.com"
+SHORT_API = "d20fd8cb82117442858d7f2acdb75648e865d2f9"
 TOKEN_EXPIRATION_PERIOD = 100
 
 logger = logging.getLogger(__name__)
