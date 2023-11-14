@@ -1,5 +1,6 @@
 import os
 import asyncio
+import base64
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -14,7 +15,6 @@ from datetime import datetime, timedelta
 import secrets
 import pymongo
 from motor import motor_asyncio
-import shortzy
 import http.client
 import json
 
@@ -43,50 +43,34 @@ async def user_has_valid_token(user_id):
         return expiration_time and expiration_time > datetime.now()
     return False
 
-# Inside the "generate_token" function
-async def generate_token(user_id):
-    # Your existing logic to generate a unique token for a user
+async def generate_24h_token(user_id):
+    # Your logic to generate a unique token for a user with 24 hours validity
     token = secrets.token_hex(16)
-    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
+    expiration_time = datetime.now() + timedelta(hours=24)
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
 
-    # Generate a link with the token
-    token_link = f"https://t.me/Blank_s_bot?token={token}"
-
-    # Shorten the token link using shortzy
-    short_token_link = await shorten_link(token_link)
-
-    return token, short_token_link
-
-async def shorten_link(link):
-    # Shorten the link using shortzy
-    conn = http.client.HTTPSConnection("api.shareus.io")
-    payload = json.dumps({
-        "api_key": "PUIAQBIFrydvLhIzAOeGV8yZppu2",
-        "url": link,
-        "category": "Entertainment",
-        "tags": ["trendinglinks"]
-    })
-    headers = {
-        'Keep-Alive': '',
-        'Content-Type': 'application/json'
-    }
-    conn.request("POST", "/generate_link", payload, headers)
-    res = conn.getresponse()
-    data = res.read()
-    
-    # Check if the response contains 'short_link'
-    response_data = json.loads(data.decode("utf-8"))
-    short_link = response_data.get("short_link")
-
-    # If 'short_link' is not present, use the original link
-    if short_link is None:
-        short_link = link
-
-    return short_link
+    # Encode the token using base64
+    encoded_token = base64.b64encode(token.encode()).decode()
+    return encoded_token
 
 
-# ... (your existing code)
+async def generate_24h_token(user_id):
+    # Your logic to generate a unique token for a user with 24 hours validity
+    token = secrets.token_hex(16)
+    expiration_time = datetime.now() + timedelta(hours=24)
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+
+    # Encode the token using base64
+    encoded_token = base64.b64encode(token.encode()).decode()
+    return encoded_token
 
 async def reset_token_verification(user_id):
     # Your logic to reset the token verification process
@@ -97,7 +81,21 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
-# ... (rest of your existing code)
+async def shorten_link(original_link):
+    # Your logic to shorten the link using the shortzy API
+    conn = http.client.HTTPSConnection("api.shareus.io")
+    payload = json.dumps({
+        "api_key": "PUIAQBIFrydvLhIzAOeGV8yZppu2",
+        "destination": original_link
+    })
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    conn.request("POST", "/generate_link", payload, headers)
+    res = conn.getresponse()
+    data = res.read()
+    short_link = json.loads(data.decode("utf-8"))["short_link"]
+    return short_link
 
 # Inside the "start_command" function
 @Bot.on_message(filters.command("start"))
@@ -109,7 +107,7 @@ async def start_command(client: Client, message: Message):
         # Generate a new token for the user
         token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify. v1")
+        await message.reply(f"Welcome! You token is: `{token}` Use /check to verify. v1")
     else:
         # Check if the user has a valid token
         if await user_has_valid_token(user_id):
@@ -118,77 +116,33 @@ async def start_command(client: Client, message: Message):
             await message.reply(f"Please provide a token using /token `{token}`. v3")
     return  # Fix: Remove extra else
     
-# Inside the "check_command" function
-@Bot.on_message(filters.command("check"))
-async def check_command(client: Client, message: Message):
-    user_id = message.from_user.id
+# ... (your existing imports)
 
-    # Check if the user is in the database
-    if await present_user(user_id):
-        # Check if the user has a valid token
-        if await user_has_valid_token(user_id):
-            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-            expiration_time = stored_token_info.get("expiration_time")
-            stored_token = stored_token_info.get("token")
-
-            if expiration_time and expiration_time > datetime.now():
-                remaining_time = expiration_time - datetime.now()
-                user = message.from_user
-                username = f"@{user.username}" if user.username else "not set"
-                await message.reply(f"v4 Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
-            else:
-                # Generate a new token for the user
-                new_token = await generate_token(user_id)
-                await message.reply(f"v5 You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
-        else:
-            # Generate a new token for the user
-            new_token = await generate_token(user_id)
-            await message.reply(f"v6 You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
-    else:
-        # Generate a new token for the user
-        new_token = await generate_token(user_id)
-        await add_user(user_id)
-        await message.reply(f"v7 You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
-        
-
-
-@Bot.on_message(filters.command("token"))
-async def token_command(client: Client, message: Message):
-    user_id = message.from_user.id
-    user_token = message.command[1] if len(message.command) > 1 else None
-
-    # Check if the provided token is valid
-    if await user_has_valid_token(user_id):
-        await message.reply("You have already provided a valid token. Use /check to verify.")
-    elif user_token:
-        # Check if the provided token is valid
-        token_entry = token_collection.find_one({"token": user_token, "user_id": {"$exists": False}})
-        if token_entry:
-            token_collection.update_one({"_id": token_entry["_id"]}, {"$set": {"user_id": user_id}})
-            user_collection.insert_one({"user_id": user_id, "token": user_token})
-            await message.reply("Token accepted! Use /check to verify.")
-        else:
-            await message.reply("Invalid token. Please try again.")
-    else:
-        await message.reply("Please provide a token using /token {your_token} .")
-
-@Bot.on_callback_query(filters.regex("^stop_process$"))
-async def stop_process_callback(client: Client, query: CallbackQuery):
-    await query.answer("Token verification process stopped. Use /start to restart.")
-    user_id = query.from_user.id
-    user_collection.delete_one({"user_id": user_id})
-
-# ... (rest of your existing code)
 # Inside the "start_command" function
-@Bot.on_message(filters.command('start') & filters.private & subscribed)
+@Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # Check if the user has a valid token
-    if not await user_has_valid_token(user_id):
-        await message.reply_text("Please provide a valid token using /token {your_token}.")
-        return  # Stop the process if the token is not valid
-
+    # Check if the user is already in the database
+    if not await present_user(user_id):
+        # Generate a new 24h token for the user
+        encoded_token = await generate_24h_token(user_id)
+        await add_user(user_id)
+        main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
+        short_link = await shorten_link(main_token_url)
+        await message.reply(f"Welcome! Your 24h token link: {short_link}. Use /check to verify.")
+    else:
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            await message.reply("You have a valid token. Use /check to verify.")
+        else:
+            # Generate a new 24h token for the user
+            encoded_token = await generate_24h_token(user_id)
+            main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
+            short_link = await shorten_link(main_token_url)
+            await message.reply(f"Please provide a token using this link: {short_link}.\nUse /check to verify.")
+    
+# Other functions remain the same
     # Continue with the existing logic if the token is valid
     if not await present_user(user_id):
         try:
@@ -276,7 +230,7 @@ async def start_command(client: Client, message: Message):
                     InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
                 ],
                 [
-                    InlineKeyboardButton("Stop Process", callback_data="stop_process")
+                    InlineKeyboardButton("Stop Process", callback_data="about")
                 ]
             ]
         )
@@ -293,6 +247,9 @@ async def start_command(client: Client, message: Message):
             quote=True
         )
         return
+
+# ... (rest of your existing code)
+
         
 
 
