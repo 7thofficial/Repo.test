@@ -62,9 +62,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
         # Inform the user about the missing token and how to obtain it
         await message.reply(client, user_id, "You don't have a valid token. Please obtain a token first to proceed.")
         return  # Exit the function without further processing
-    
+    base64_string = await encode(f"token_{stored_token}")
     base_url = f"https://t.me/{client.username}"
-    tokenized_url = f"{base_url}?start=token_{stored_token}"
+    tokenized_url = f"{base_url}?start={base64_string}"
     
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
