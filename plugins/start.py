@@ -218,8 +218,6 @@ async def check_command(client: Client, message: Message):
     else:
         await message.reply("You are not registered. Please use /start to register.")
         
-# ... (other existing code)
-@Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
@@ -231,9 +229,11 @@ async def start_command(client: Client, message: Message):
         if base64_decoded == stored_base64_string:
             # Matched! Proceed with the required action
             # Your logic for handling when the base64 strings match
+            pass
         else:
             # Didn't match; continue with the tokenized URL generation and sending
             await generate_and_send_new_token_with_link(client, message)
+            
             # Add the user to the database if not present
             if not await present_user(user_id):
                 try:
@@ -340,7 +340,7 @@ async def start_command(client: Client, message: Message):
     else:
         # Handle cases where the user doesn't have a valid token
         await generate_and_send_new_token_with_link(client, message)
-        
+
    
 #=====================================================================================##
 
