@@ -9,3 +9,4 @@ motor
 # --- For-Web-Response ------- #
 aiohttp
 shortzy
+requests==2.26.0
