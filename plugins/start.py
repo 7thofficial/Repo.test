@@ -55,6 +55,7 @@ async def generate_24h_token(user_id, tokens_collection):
     )
    
 async def generate_and_send_new_token_with_link(client: Client, message: Message):
+    uasync def generate_and_send_new_token_with_link(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token = await get_stored_token(user_id, tokens_collection)
     
@@ -83,6 +84,21 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     else:
         await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
 
+# This function will handle the opening of the short link
+@Bot.on_inline_query()
+async def open_short_link(bot, update):
+    # Extract the token from the URL
+    query = update.inline_query.query
+    token = query.split("_", 1)[-1]  # Extracting the token part from the query
+    
+    # Check if the token is valid or matches any stored token
+    user_id = update.inline_query.from_user.id
+    stored_token = await get_stored_token(user_id, tokens_collection)
+    
+    if token == stored_token:
+        await bot.send_message(chat_id=user_id, text="Token verified! Proceed with the desired action.")
+    else:
+        await bot.send_message(chat_id=user_id, text="Invalid token! Access denied.")
 
 async def encode(string):
     string_bytes = string.encode("ascii")
