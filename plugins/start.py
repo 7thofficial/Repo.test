@@ -83,22 +83,32 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     else:
         await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
 
+async def verify_token_from_url(user_id, provided_base64_string):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        stored_token = stored_token_info["token"]
+        decoded_stored_token = await decode(stored_token)  # Decoding the stored token
+        decoded_provided_token = await decode(provided_base64_string)  # Decoding the provided base64 string
+        if decoded_stored_token == decoded_provided_token:
+            return True
+    return False
+
+
 # This function will handle the opening of the short link
 @Bot.on_inline_query()
 async def open_short_link(bot, update):
-    # Extract the token from the URL
     query = update.inline_query.query
     token = query.split("_", 1)[-1]  # Extracting the token part from the query
-    
-    # Check if the token is valid or matches any stored token
     user_id = update.inline_query.from_user.id
-    stored_token = await get_stored_token(user_id, tokens_collection)
-    
-    if token == stored_token:
+
+    # Assuming the token is part of the query and extracted as 'token'
+    is_valid_token = await verify_token_from_url(user_id, token)
+
+    if is_valid_token:
         await bot.send_message(chat_id=user_id, text="Token verified! Proceed with the desired action.")
     else:
         await bot.send_message(chat_id=user_id, text="Invalid token! Access denied.")
-
+        
 async def encode(string):
     string_bytes = string.encode("ascii")
     base64_bytes = base64.urlsafe_b64encode(string_bytes)
