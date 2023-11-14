@@ -119,7 +119,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
         )
         stored_token = token
     
-    token_link = f"https://t.me/{client.username}?token={stored_token}"
+    token_link = f"https://t.me/{client.username}?start=token_{stored_token}"
     # Pass the required arguments 'short_url' and 'short_api' to get_shortlink function
     short_link = await get_shortlink(token_link, SHORT_URL, SHORT_API)
     
