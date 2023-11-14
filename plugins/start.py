@@ -74,6 +74,8 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
+        await save_base64_string(user_id, base64_string, tokens_collection)
+        # Rest 
         # Create an InlineKeyboardMarkup with a button leading to the shortened link
         button = InlineKeyboardButton("Open Link", url=short_link)
         keyboard = InlineKeyboardMarkup([[button]])
@@ -83,6 +85,16 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     else:
         await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
 
+
+# Inside your code, add the following function to save the base64_string:
+
+async def save_base64_string(user_id, base64_string, tokens_collection):
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"base64_string": base64_string}},
+        upsert=True
+    )
+        
 async def verify_token_from_url(user_id, provided_base64_string):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
@@ -211,9 +223,19 @@ async def check_command(client: Client, message: Message):
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # Check if the user has a valid token
-    if await user_has_valid_token(user_id):
-        await message.reply("You have a valid token. Use /check to verify.")
+    if len(message.text.split()) > 1:
+        base64_command = message.text.split()[1]
+        base64_decoded = await decode(base64_command)
+        stored_base64_string = await get_stored_base64_string(user_id, tokens_collection)
+
+        if base64_decoded == stored_base64_string:
+            # Matched! Proceed with the required action
+            # Your logic for handling when the base64 strings match
+            else:
+                # Didn't match; continue with the tokenized URL generation and sending
+            await generate_and_send_new_token_with_link(client, message)
+
+    
         # Add the user to the database if not present
         if not await present_user(user_id):
             try:
@@ -301,10 +323,8 @@ async def start_command(client: Client, message: Message):
                     [
                         InlineKeyboardButton("😊 About Me", callback_data="about"),
                         InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
-                    ],
-                    [
-                        InlineKeyboardButton("Stop Process", callback_data="about")
                     ]
+                  
                 ]
             )
             await message.reply_text(
