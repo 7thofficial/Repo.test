@@ -107,7 +107,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     if not stored_token:
         # Generate a new 24h token for the user
         token = secrets.token_hex(16)
-        expiration_time = datetime.now() + timedelta(hours=24)
+        expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
         await tokens_collection.update_one(
             {"user_id": user_id},
             {"$set": {"token": token, "expiration_time": expiration_time}},
