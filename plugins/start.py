@@ -128,7 +128,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
                        f"Use /check to verify.")
 
 
-@Bot.on_message(filters.private & filters.command('deleteall') & filters.user(ADMINS))
+@Bot.on_message(filters.command('deleteall'))
 async def delete_all_data(client: Client, message: Message):
     try:
         await user_data.drop()  # Drops the entire collection holding user data
