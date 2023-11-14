@@ -21,6 +21,10 @@ import aiohttp
 
 short_url = "api.shareus.io"
 short_api = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
+
+SHORT_URL = "api.shareus.io"
+SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
+
 # Configure your logger as per your logging settings
 logger = logging.getLogger(__name__)
 
