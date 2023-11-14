@@ -3,7 +3,7 @@ import asyncio
 import base64
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ChatAction
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 import random
 from bot import Bot
@@ -58,10 +58,10 @@ tokens_collection = database["tokens"]
 user_data = database['users']
 
 # Token expiration period (1 day in seconds)
-TOKEN_EXPIRATION_PERIOD = 60
+TOKEN_EXPIRATION_PERIOD = 100
 
 async def send_message(client, chat_id, text):
-    await client.send_chat_action(chat_id, "typing")
+    await client.send_chat_action(chat_id, ChatAction.TYPING)
     await asyncio.sleep(1)  # Simulate typing (optional)
     await client.send_message(chat_id, text)
 
