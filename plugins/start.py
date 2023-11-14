@@ -77,9 +77,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
-        await send_message(client, user_id, f"Here is your shortened link: {short_link}")
+        await message.reply(client, user_id, f"Here is your shortened link: {short_link}")
     else:
-        await send_message(client, user_id, "There was an error generating the shortened link. Please try again later.")
+        await message.reply(client, user_id, "There was an error generating the shortened link. Please try again later.")
         
    
 # Use motor for asynchronous MongoDB operations
