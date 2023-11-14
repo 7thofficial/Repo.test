@@ -27,7 +27,7 @@ TOKEN_EXPIRATION_PERIOD = 100
 logger = logging.getLogger(__name__)
 
 async def shorten_url_with_shareusio(url, short_url, short_api):
-    api_endpoint = f'{short_url}/api'
+    api_endpoint = f'http://{short_url}/api'  # Adding 'http://' as the schema
     params = {'api': short_api, 'url': url}
 
     try:
@@ -43,6 +43,7 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
     except requests.RequestException as e:
         logger.error(f"Request Exception: {e}")
     return None  # Return None if any error occurs
+
     
 
 async def generate_24h_token(user_id, tokens_collection):
