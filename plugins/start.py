@@ -30,7 +30,7 @@ SHORT_URL = "your_short_url"
 SHORT_API = "your_short_api_key"
 
 # Token expiration period (1 day in seconds)
-TOKEN_EXPIRATION_PERIOD = 86
+TOKEN_EXPIRATION_PERIOD = 24 * 60 * 60
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
