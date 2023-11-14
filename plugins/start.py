@@ -45,7 +45,6 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
     return None  # Return None if any error occurs
 
     
-
 async def generate_24h_token(user_id, tokens_collection):
     token = secrets.token_hex(16)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
@@ -54,22 +53,15 @@ async def generate_24h_token(user_id, tokens_collection):
         {"$set": {"token": token, "expiration_time": expiration_time}},
         upsert=True
     )
-    encoded_token = base64.b64encode(token.encode()).decode()
-    return encoded_token
-
+   
 async def generate_and_send_new_token_with_link(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token = await get_stored_token(user_id, tokens_collection)
     
     if not stored_token:
-        token = secrets.token_hex(16)
-        expiration_time = datetime.now() + timedelta(hours=24)
-        await tokens_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {"token": token, "expiration_time": expiration_time}},
-            upsert=True
-        )
-        stored_token = token
+        # Inform the user about the missing token and how to obtain it
+        await message.reply(client, user_id, "You don't have a valid token. Please obtain a token first to proceed.")
+        return  # Exit the function without further processing
     
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start=token_{stored_token}"
@@ -77,20 +69,26 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
-        try:
-            # Check if message has 'message_id' attribute before replying
-            if hasattr(message, 'message_id'):
-                await message.reply(client, user_id, f"Here is your shortened link: {short_link}")
-            else:
-                # Handle the case where 'message_id' attribute is not present
-                # Add error logging or alternative action here
-                pass
-        except Exception as e:
-            # Handle specific exceptions if necessary
-            print(f"Error: {e}")
+        await message.reply(client, user_id, f"Here is your shortened link: {short_link}")
     else:
         await message.reply(client, user_id, "There was an error generating the shortened link. Please try again later.")
-        
+
+async def encode(string):
+    string_bytes = string.encode("ascii")
+    base64_bytes = base64.urlsafe_b64encode(string_bytes)
+    base64_string = (base64_bytes.decode("ascii")).strip("=")
+    return base64_string
+
+async def decode(base64_string):
+    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
+    base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
+    string_bytes = base64.urlsafe_b64decode(base64_bytes) 
+    string = string_bytes.decode("ascii")
+    return string
+
+# Other parts of your code remain unchanged
+# Ensure you integrate these adjustments into your existing codebase and test thoroughly.
+
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
