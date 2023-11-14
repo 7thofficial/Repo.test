@@ -18,6 +18,37 @@ from motor import motor_asyncio
 import http.client
 import json
 import aiohttp
+import requests
+
+def shorten_url_with_shareusio(url, short_url, short_api):
+    api_endpoint = f'{short_url}/api'
+    params = {'api': short_api, 'url': url}
+    
+    try:
+        response = requests.get(api_endpoint, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if data["status"] == "success":
+                return data['shortenedUrl']
+            else:
+                print(f"Error: {data.get('message', 'Unknown error')}")
+        else:
+            print(f"Error: Status Code - {response.status_code}")
+    except requests.RequestException as e:
+        print(f"Request Exception: {e}")
+    return None
+
+# Usage
+long_url = 'https://www.example.com'
+short_url = 'api.shareus.io'
+short_api_key = 'PUIAQBIFrydvLhIzAOeGV8yZppu2'
+
+shortened_url = shorten_url_with_shareusio(long_url, short_url, short_api_key)
+if shortened_url:
+    print(f"Shortened URL: {shortened_url}")
+else:
+    print("URL shortening failed.")
+
 
 short_url = "api.shareus.io"
 short_api = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
