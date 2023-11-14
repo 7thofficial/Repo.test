@@ -59,21 +59,6 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
-async def shorten_link(original_link):
-    conn = http.client.HTTPSConnection("api.shareus.io")
-    payload = json.dumps({
-        "api_key": "PUIAQBIFrydvLhIzAOeGV8yZppu2",
-        "destination": original_link
-    })
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    conn.request("POST", "/generate_link", payload, headers)
-    res = conn.getresponse()
-    data = res.read()
-    short_link = json.loads(data.decode("utf-8"))["short_link"]
-    return short_link
-
 async def generate_and_send_new_token(client: Client, message: Message):
     user_id = message.from_user.id
     token = await generate_24h_token(user_id)
