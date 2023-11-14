@@ -26,7 +26,7 @@ TOKEN_EXPIRATION_PERIOD = 100
 
 logger = logging.getLogger(__name__)
 
-def shorten_url_with_shareusio(url, short_url, short_api):
+async def shorten_url_with_shareusio(url, short_url, short_api):
     api_endpoint = f'{short_url}/api'
     params = {'api': short_api, 'url': url}
 
@@ -35,14 +35,15 @@ def shorten_url_with_shareusio(url, short_url, short_api):
         if response.status_code == 200:
             data = response.json()
             if data["status"] == "success":
-                return data['shortenedUrl']
+                return data.get('shortenedUrl')  # Return shortened URL
             else:
-                print(f"Error: {data.get('message', 'Unknown error')}")
+                logger.error(f"Error: {data.get('message', 'Unknown error')}")
         else:
-            print(f"Error: Status Code - {response.status_code}")
+            logger.error(f"Error: Status Code - {response.status_code}")
     except requests.RequestException as e:
-        print(f"Request Exception: {e}")
-    return None
+        logger.error(f"Request Exception: {e}")
+    return None  # Return None if any error occurs
+    
 
 async def generate_24h_token(user_id, tokens_collection):
     token = secrets.token_hex(16)
