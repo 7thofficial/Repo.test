@@ -44,7 +44,7 @@ def shorten_url_with_shareusio(url, short_url, short_api):
         print(f"Request Exception: {e}")
     return None
 
-async def generate_24h_token(user_id):
+async def generate_24h_token(user_id, tokens_collection):
     token = secrets.token_hex(16)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one(
@@ -55,9 +55,30 @@ async def generate_24h_token(user_id):
     encoded_token = base64.b64encode(token.encode()).decode()
     return encoded_token
 
-# ... (rest of your code)
+async def generate_and_send_new_token_with_link(client: Client, message: Message):
+    user_id = message.from_user.id
+    stored_token = await get_stored_token(user_id, tokens_collection)
+    
+    if not stored_token:
+        token = secrets.token_hex(16)
+        expiration_time = datetime.now() + timedelta(hours=24)
+        await tokens_collection.update_one(
+            {"user_id": user_id},
+            {"$set": {"token": token, "expiration_time": expiration_time}},
+            upsert=True
+        )
+        stored_token = token
+    
+    base_url = f"https://t.me/{client.username}"
+    tokenized_url = f"{base_url}?start=token_{stored_token}"
+    
+    short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
+    
+    await send_message(client, message.from_user.id,
+                       f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
+                       f"Use /check to verify.")
 
-# Your main code here
+
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
@@ -83,19 +104,6 @@ async def user_has_valid_token(user_id):
         expiration_time = stored_token_info.get("expiration_time")
         return expiration_time and expiration_time > datetime.now()
     return False
-
-# Use TOKEN_EXPIRATION_PERIOD
-async def generate_24h_token(user_id):
-    token = secrets.token_hex(16)
-    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token": token, "expiration_time": expiration_time}},
-        upsert=True
-    )
-    # If you need the encoded token for some reason, return it
-    encoded_token = base64.b64encode(token.encode()).decode()
-    return encoded_token
     
 async def reset_token_verification(user_id):
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
@@ -108,29 +116,6 @@ async def generate_and_send_new_token(client: Client, message: Message):
     user_id = message.from_user.id
     token = await generate_24h_token(user_id)
     await message.reply(f"Your new token: {token}")
-
-async def generate_and_send_new_token_with_link(client: Client, message: Message):
-    user_id = message.from_user.id
-    stored_token = await get_stored_token(user_id)
-    
-    if not stored_token:
-        # Generate a new 24h token for the user
-        token = secrets.token_hex(16)
-        expiration_time = datetime.now() + timedelta(hours=24)
-        await tokens_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {"token": token, "expiration_time": expiration_time}},
-            upsert=True
-        )
-        stored_token = token
-    
-    url = f"https://t.me/{client.username}?start=token_{stored_token}"
-    # Pass the required arguments 'short_url' and 'short_api' to get_shortlink function
-    short_link = await shorten_url_with_shareusio(url, SHORT_URL, SHORT_API)
-    
-    await send_message(client, message.from_user.id,
-                       f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
-                       f"Use /check to verify.")
 
 
 @Bot.on_message(filters.command('deleteall'))
@@ -297,15 +282,6 @@ async def start_command(client: Client, message: Message):
         # Handle cases where the user doesn't have a valid token
         await generate_and_send_new_token_with_link(client, message)
    
-# ... (rest of your existing code)
-
-
-# ... (rest of your existing code)
-
-
-
-        
-    
 #=====================================================================================##
 
 WAIT_MSG = """"<b>Processing ...</b>"""
