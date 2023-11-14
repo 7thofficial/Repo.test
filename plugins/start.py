@@ -19,8 +19,8 @@ import http.client
 import json
 import aiohttp
 
-SHORT_URL = "api.shareus.io"
-SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
+short_url = "api.shareus.io"
+short_api = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
 # Configure your logger as per your logging settings
 logger = logging.getLogger(__name__)
 
