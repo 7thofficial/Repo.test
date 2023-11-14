@@ -218,7 +218,10 @@ async def check_command(client: Client, message: Message):
     else:
         await message.reply("You are not registered. Please use /start to register.")
         
-@Bot.on_message(filters.command('start'))
+
+
+@Bot.on_message(filters.command("start"))
+async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
     if len(message.text.split()) > 1:
@@ -340,8 +343,7 @@ async def check_command(client: Client, message: Message):
     else:
         # Handle cases where the user doesn't have a valid token
         await generate_and_send_new_token_with_link(client, message)
-
-   
+        
 #=====================================================================================##
 
 WAIT_MSG = """"<b>Processing ...</b>"""
