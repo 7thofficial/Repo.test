@@ -78,16 +78,20 @@ async def shorten_link(original_link):
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
+    # Check if the user is already in the database
     if not await present_user(user_id):
+        # Generate a new 24h token for the user
         encoded_token = await generate_24h_token(user_id)
         await add_user(user_id)
         main_token_url = f"https://telegram.dog/{client.username}?start=token_{encoded_token}"
         short_link = await shorten_link(main_token_url)
         await message.reply(f"Welcome! Your 24h token link: {short_link}. Use /check to verify.")
     else:
+        # Check if the user has a valid token
         if await user_has_valid_token(user_id):
             await message.reply("You have a valid token. Use /check to verify.")
         else:
+            # Generate a new 24h token for the user
             await generate_and_send_new_token(client, message)
 
 async def generate_and_send_new_token(client: Client, message: Message):
@@ -97,6 +101,9 @@ async def generate_and_send_new_token(client: Client, message: Message):
     short_link = await shorten_link(main_token_url)
     await message.reply(f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
                         f"Use /check to verify.")
+
+# ... (rest of your existing code)
+
 
 @Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
