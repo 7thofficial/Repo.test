@@ -19,33 +19,40 @@ import http.client
 import json
 import aiohttp
 
+SHORT_URL = "api.shareus.io"
+SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
+# Configure your logger as per your logging settings
+logger = logging.getLogger(__name__)
+
+async def get_shortlink(link, short_url, short_api):
+    url = f'{short_url}/api'
+    params = {'api': short_api, 'url': link}
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                response.raise_for_status()
+                data = await response.json()
+                
+                if data["status"] == "success":
+                    return data['shortenedUrl']
+                else:
+                    logger.error(f"Error: {data.get('message', 'Unknown error')}")
+                    return link
+    except aiohttp.ClientError as e:
+        logger.error(f"AIOHTTP Client Error: {e}")
+    except Exception as e:
+        logger.error(f"Error: {e}")
+
+    return link
+
+
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
 user_data = database['users']
 
-# Your URL shortener details
-SHORT_URL = "api.shareus.io"
-SHORT_API = "PUIAQBIFrydvLhIzAOeGV8yZppu2"
-
-async def get_shortlink(link):
-    url = f'{SHORT_URL}/api'
-    params = {'api': SHORT_API, 'url': link}
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, raise_for_status=True, ssl=False) as response:
-                data = await response.json()
-                if data["status"] == "success":
-                    return data['shortenedUrl']
-                else:
-                    logger.error(f"Error: {data['message']}")
-                    return link
-    except Exception as e:
-        logger.error(e)
-        return link
-        
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 60
 
