@@ -121,7 +121,14 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     await send_message(client, message.from_user.id,
                        f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
                        f"Use /check to verify.")
- 
+
+@Bot.on_message(filters.private & filters.command('deleteall') & filters.user(ADMINS))
+async def delete_all_data(client: Bot, message: Message):
+    await user_data.drop()  # Drops the entire collection holding user data
+    await tokens_collection.delete_many({})  # Deletes all tokens
+    await message.reply("All user data and tokens have been deleted from the database.")
+
+
 @Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
