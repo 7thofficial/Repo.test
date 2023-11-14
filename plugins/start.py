@@ -94,6 +94,11 @@ async def save_base64_string(user_id, base64_string, tokens_collection):
         {"$set": {"base64_string": base64_string}},
         upsert=True
     )
+
+async def get_stored_base64_string(user_id, tokens_collection):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    return stored_token_info["base64_string"] if stored_token_info else None
+    
         
 async def verify_token_from_url(user_id, provided_base64_string):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
