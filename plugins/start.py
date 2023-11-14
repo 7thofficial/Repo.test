@@ -46,7 +46,7 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
 
     
 async def generate_24h_token(user_id, tokens_collection):
-    token = secrets.token_hex(16)
+    token = secrets.token_hex(8)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one(
         {"user_id": user_id},
