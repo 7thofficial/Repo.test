@@ -74,10 +74,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     tokenized_url = f"{base_url}?start=token_{stored_token}"
     
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
-    
-    await send_message(client, message.from_user.id,
-                       f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
-                       f"Use /check to verify.")
+   
    
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
