@@ -9,7 +9,7 @@ import aiohttp
 import requests
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, ChatAction
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 from motor import motor_asyncio
 
@@ -78,7 +78,11 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
                        f"Your previous token has expired. Here is your new 24h token link: {short_link}. "
                        f"Use /check to verify.")
 
-
+async def send_message(client, chat_id, text):
+    await client.send_chat_action(chat_id, action='typing')
+    await asyncio.sleep(1)  # Simulate typing (optional)
+    await client.send_message(chat_id, text)
+    
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
@@ -89,10 +93,6 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 100
 
-async def send_message(client, chat_id, text):
-    await client.send_chat_action(chat_id, ChatAction.TYPING)
-    await asyncio.sleep(1)  # Simulate typing (optional)
-    await client.send_message(chat_id, text)
 
 async def get_unused_token():
     unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
