@@ -124,10 +124,13 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
 
 @Bot.on_message(filters.private & filters.command('deleteall') & filters.user(ADMINS))
 async def delete_all_data(client: Bot, message: Message):
-    await user_data.drop()  # Drops the entire collection holding user data
-    await tokens_collection.delete_many({})  # Deletes all tokens
-    await message.reply("All user data and tokens have been deleted from the database.")
-
+    try:
+        await user_data.drop()  # Drops the entire collection holding user data
+        await tokens_collection.delete_many({})  # Deletes all tokens
+        await message.reply("All user data and tokens have been deleted from the database.")
+    except Exception as e:
+        await message.reply(f"An error occurred: {str(e)}")
+        
 
 @Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
