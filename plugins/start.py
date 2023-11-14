@@ -62,14 +62,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     stored_token = await get_stored_token(user_id, tokens_collection)
     
     if not stored_token:
-        token = secrets.token_hex(16)
-        expiration_time = datetime.now() + timedelta(hours=24)
-        await tokens_collection.update_one(
-            {"user_id": user_id},
-            {"$set": {"token": token, "expiration_time": expiration_time}},
-            upsert=True
-        )
-        stored_token = token
+        stored_token = await generate_24h_token(user_id, tokens_collection)
     
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start=token_{stored_token}"
@@ -77,11 +70,11 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
-        await message.reply(client, user_id, f"Here is your shortened link: {short_link}")
+        await client.send_message(message.chat.id, f"Here is your shortened link: {short_link}", reply_to_message_id=message.message_id)
     else:
-        await message.reply(client, user_id, "There was an error generating the shortened link. Please try again later.")
-        
-   
+        await client.send_message(message.chat.id, "There was an error generating the shortened link. Please try again later.", reply_to_message_id=message.message_id)
+
+
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
