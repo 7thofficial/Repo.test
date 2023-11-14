@@ -112,8 +112,9 @@ async def verify_token_from_url(user_id, provided_base64_string):
 
 
 # This function will handle the opening of the short link
+
 @Bot.on_inline_query()
-async def open_short_link(bot, update):
+async def open_short_link(client, update):
     query = update.inline_query.query
     token = query.split("_", 1)[-1]  # Extracting the token part from the query
     user_id = update.inline_query.from_user.id
@@ -122,10 +123,25 @@ async def open_short_link(bot, update):
     is_valid_token = await verify_token_from_url(user_id, token)
 
     if is_valid_token:
-        await bot.send_message(chat_id=user_id, text="Token verified! Proceed with the desired action.")
+        await update.inline_query.answer([
+            InlineQueryResultArticle(
+                title="Token verified! Proceed with the desired action.",
+                input_message_content=InputTextMessageContent(
+                    message_text="Token verified! Proceed with the desired action."
+                )
+            )
+        ])
     else:
-        await bot.send_message(chat_id=user_id, text="Invalid token! Access denied.")
-        
+        await update.inline_query.answer([
+            InlineQueryResultArticle(
+                title="Invalid token! Access denied.",
+                input_message_content=InputTextMessageContent(
+                    message_text="Invalid token! Access denied."
+                )
+            )
+        ])
+
+
 async def encode(string):
     string_bytes = string.encode("ascii")
     base64_bytes = base64.urlsafe_b64encode(string_bytes)
