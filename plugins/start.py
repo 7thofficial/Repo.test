@@ -74,6 +74,12 @@ async def shorten_link(original_link):
     short_link = json.loads(data.decode("utf-8"))["short_link"]
     return short_link
 
+async def generate_and_send_new_token(client: Client, message: Message):
+    user_id = message.from_user.id
+    token = await generate_24h_token(user_id)
+    await message.reply(f"Your new token: {token}")
+
+
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
