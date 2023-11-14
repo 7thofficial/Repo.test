@@ -218,7 +218,7 @@ async def check_command(client: Client, message: Message):
     else:
         await message.reply("You are not registered. Please use /start to register.")
         
-async def start_command(client: Client, message: Message):
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
     user_id = message.from_user.id
 
     if len(message.text.split()) > 1:
