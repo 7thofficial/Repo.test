@@ -44,35 +44,6 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
         logger.error(f"Request Exception: {e}")
     return None  # Return None if any error occurs
 
-  
-async def generate_and_send_new_token_with_link(client: Client, message: Message):
-    user_id = message.from_user.id
-    stored_token = await get_stored_token(user_id, tokens_collection)
-    
-    if not stored_token:
-        # Generate a new token and save it
-        await generate_24h_token(user_id, tokens_collection)
-        # Retrieve the newly generated token
-        stored_token = await get_stored_token(user_id, tokens_collection)
-        if not stored_token:
-            await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
-            return  # Exit the function without further processing
-
-   # base64_string = f"{stored_token}"  # Remove 'await' here
-   # base_url = f"https://t.me/{client.username}"
-    tokenized_url = f"https://t.me/{client.username}?start={stored_token}"
-    
-    short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
-    
-    if short_link:
-        await save_base64_string(user_id, stored_token, tokens_collection)
-        # Rest of your code
-    else:
-        await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
-
-# ... (other parts of your 
-# This function will handle the opening of the short link
-
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
@@ -103,51 +74,6 @@ async def get_stored_token(user_id, tokens_collection):
     return stored_token_info["token"] if stored_token_info else None
 
 
-@Bot.on_message(filters.command('deleteall'))
-async def delete_all_data(client: Client, message: Message):
-    try:
-        await user_data.drop()  # Drops the entire collection holding user data
-        await tokens_collection.delete_many({})  # Deletes all tokens
-        await message.reply("All user data and tokens have been deleted from the database.")
-    except Exception as e:
-        await message.reply(f"An error occurred: {str(e)}")
-        
-
-@Bot.on_message(filters.command("check"))
-async def check_command(client: Client, message: Message):
-    user_id = message.from_user.id
-
-    if await present_user(user_id):
-        if await user_has_valid_token(user_id):
-            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-            stored_token = stored_token_info["token"]
-            expiration_time = stored_token_info["expiration_time"]
-            remaining_time = expiration_time - datetime.now()
-
-            if remaining_time.total_seconds() > 0:
-                user_info = await client.get_users(user_id)
-                first_name = user_info.first_name
-                last_name = user_info.last_name
-                username = user_info.username
-                mention = user_info.mention
-                user_id = user_info.id
-
-                await message.reply_text(
-                    f"Token is valid for {int(remaining_time.total_seconds() / 3600)} hours and "
-                    f"{int((remaining_time.total_seconds() % 3600) / 60)} minutes.\n\n"
-                    f"User Details:\n"
-                    f"First Name: {first_name}\n"
-                    f"Last Name: {last_name}\n"
-                    f"Username: {username}\n"
-                    f"Mention: {mention}\n"
-                    f"User ID: {user_id}"
-                )
-            else:
-                await generate_and_send_new_token_with_link(client, message)
-        else:
-            await message.reply("Token is not valid. Please generate a new token.")
-    else:
-        await message.reply("You are not registered. Please use /start to register.")
         
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
@@ -212,7 +138,51 @@ REPLY_ERROR = """<code>Use this command as a replay to any telegram message with
 
 #=====================================================================================##
 
+@Bot.on_message(filters.command('deleteall'))
+async def delete_all_data(client: Client, message: Message):
+    try:
+        await user_data.drop()  # Drops the entire collection holding user data
+        await tokens_collection.delete_many({})  # Deletes all tokens
+        await message.reply("All user data and tokens have been deleted from the database.")
+    except Exception as e:
+        await message.reply(f"An error occurred: {str(e)}")
+        
 
+@Bot.on_message(filters.command("check"))
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    if await present_user(user_id):
+        if await user_has_valid_token(user_id):
+            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+            stored_token = stored_token_info["token"]
+            expiration_time = stored_token_info["expiration_time"]
+            remaining_time = expiration_time - datetime.now()
+
+            if remaining_time.total_seconds() > 0:
+                user_info = await client.get_users(user_id)
+                first_name = user_info.first_name
+                last_name = user_info.last_name
+                username = user_info.username
+                mention = user_info.mention
+                user_id = user_info.id
+
+                await message.reply_text(
+                    f"Token is valid for {int(remaining_time.total_seconds() / 3600)} hours and "
+                    f"{int((remaining_time.total_seconds() % 3600) / 60)} minutes.\n\n"
+                    f"User Details:\n"
+                    f"First Name: {first_name}\n"
+                    f"Last Name: {last_name}\n"
+                    f"Username: {username}\n"
+                    f"Mention: {mention}\n"
+                    f"User ID: {user_id}"
+                )
+            else:
+                await generate_and_send_new_token_with_link(client, message)
+        else:
+            await message.reply("Token is not valid. Please generate a new token.")
+    else:
+        await message.reply("You are not registered. Please use /start to register.")
 @Bot.on_message(filters.command('start') & filters.private)
 async def not_joined(client: Client, message: Message):
     buttons = [
