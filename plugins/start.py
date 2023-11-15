@@ -207,7 +207,7 @@ async def start_command(client: Client, message: Message):
 
     if len(message.text.split()) > 1:
         base64_command = message.text.split()[1]
-        base64_decoded = await decode(base64_command)
+        base64_decoded = await (base64_command)
 
     if base64_decoded == stored_base64_string:
         is_valid_token = await verify_token_from_url(user_id, stored_base64_string)
