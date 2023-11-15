@@ -135,9 +135,6 @@ async def handle_start_command(client: Client, message: Message):
         )
         return
 
-
-# Your existing token-related functions...
-
 # Modify your command handler to include token verification
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
@@ -145,10 +142,16 @@ async def start_command(client: Client, message: Message):
     user_has_token = await verify_token(id, "")
     
     if not user_has_token:
-        # User doesn't have a valid token, generate a new one
-        new_token = await generate_token(id)
-        await message.reply_text(f"Here's your new token: {new_token}")
-        return
+        # Check if a token was previously generated but not used
+        unused_token = await get_unused_token(id)
+        if unused_token:
+            await message.reply_text(f"Here's your unused token: {unused_token}")
+            return
+        else:
+            # Generate a new token for the user
+            new_token = await generate_token(id)
+            await message.reply_text(f"Here's your new token: {new_token}")
+            return
     
     text = message.text
     if len(text) > 7:
@@ -160,7 +163,7 @@ async def start_command(client: Client, message: Message):
                 # Token is valid, execute the start command logic
                 await handle_start_command(client, message)
             else:
-                # Token is invalid or expired, generate a new one and return
+                # Token is invalid or expired, return a new token
                 new_token = await generate_token(id)
                 await message.reply_text(f"Invalid or expired token. Here's a new token: {new_token}")
                 return
@@ -168,8 +171,9 @@ async def start_command(client: Client, message: Message):
             return
         except Exception as e:
             print(e)  # Handle exceptions accordingly
-                
+           
 
+               
 
 
     
