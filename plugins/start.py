@@ -65,43 +65,6 @@ async def generate_24h_token(user_id, tokens_collection):
         upsert=True
     )
     return token
-
-# 2. Create a Telegram Deep Link with the Token
-def create_telegram_deep_link(token):
-    # Construct a deep link with the token parameter
-    deep_link = f"https://t.me/blank_s_bot?start={token}"
-    return deep_link
-    
-@Bot.on_message(filters.command('start') & filters.private)
-async def start_command(client: Client, message: Message):
-    user_id = message.from_user.id
-
-    # Extract token from the deep link
-    provided_token = message.command[1] if len(message.command) > 1 else None
-
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    stored_token = stored_token_info.get("token") if stored_token_info else None
-
-    if provided_token == stored_token:
-        # Token matches, proceed with the action
-        print("Token matched.")
-        # Your further logic here
-        await process_matching_token(client, message)
-    else:
-        # Token didn't match, generate a new token and deep link
-        new_token = await generate_24h_token(user_id, tokens_collection)
-        new_deep_link = create_telegram_deep_link(new_token)
-        print("Token mismatch. New token and link generated:", new_token, new_deep_link)
-
-        # Present the deep link with the token as a button for user verification
-        reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Verify Token", url=new_deep_link)]
-        ])
-        await message.reply_text("Please verify your token.", reply_markup=reply_markup)
-
-# ... (other functions and imports)
-# ... (other functions and imports)
-
 async def process_matching_token(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
@@ -167,6 +130,42 @@ async def save_token_match_status(user_id, match_status, message):
         {"$set": {"token_match": match_status}},
         upsert=True
     )
+    
+# 2. Create a Telegram Deep Link with the Token
+def create_telegram_deep_link(token):
+    # Construct a deep link with the token parameter
+    deep_link = f"https://t.me/blank_s_bot?start={token}"
+    return deep_link
+    
+@Bot.on_message(filters.command('start') & filters.private)
+async def start_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Extract token from the deep link
+    provided_token = message.command[1] if len(message.command) > 1 else None
+
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    stored_token = stored_token_info.get("token") if stored_token_info else None
+
+    if provided_token == stored_token:
+        # Token matches, proceed with the action
+        print("Token matched.")
+        # Your further logic here
+        await process_matching_token(client, message)
+    else:
+        # Token didn't match, generate a new token and deep link
+        new_token = await generate_24h_token(user_id, tokens_collection)
+        new_deep_link = create_telegram_deep_link(new_token)
+        print("Token mismatch. New token and link generated:", new_token, new_deep_link)
+
+        # Present the deep link with the token as a button for user verification
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Verify Token", url=new_deep_link)]
+        ])
+        await message.reply_text("Please verify your token.", reply_markup=reply_markup)
+
+# ... (other functions and imports)
+# ... (other functions and imports)
 
     # You can use 'message' here as needed
     id = message.from_user.id
