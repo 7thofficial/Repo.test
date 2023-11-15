@@ -2,7 +2,7 @@ import os
 import asyncio
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, User
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 import random
 from bot import Bot
@@ -42,7 +42,7 @@ async def user_has_valid_token(user_id):
 
 async def generate_token(user_id):
     # Your logic to generate a unique token for a user
-    token = secrets.token_hex(16)
+    token = secrets.token_hex(6)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
     return token
@@ -74,7 +74,7 @@ async def start_command(client: Client, message: Message):
         if await user_has_valid_token(user_id):
             await message.reply("You have a valid token. Use /check to verify.")
         else:
-            await message.reply(f"Please provide a token using /token `{token}`.")
+            await message.reply(f"Please provide a token using f"https://t.me/blank_s_bot/link/{new_token `.")
     return  # Fix: Remove extra else
     
 # Inside the "check_command" function
@@ -110,34 +110,6 @@ async def check_command(client: Client, message: Message):
         await message.reply(f"You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
         
 
-
-@Bot.on_message(filters.command("token"))
-async def token_command(client: Client, message: Message):
-    user_id = message.from_user.id
-    user_token = message.command[1] if len(message.command) > 1 else None
-
-    # Check if the provided token is valid
-    if await user_has_valid_token(user_id):
-        await message.reply("You have already provided a valid token. Use /check to verify.")
-    elif user_token:
-        # Check if the provided token is valid
-        token_entry = token_collection.find_one({"token": user_token, "user_id": {"$exists": False}})
-        if token_entry:
-            token_collection.update_one({"_id": token_entry["_id"]}, {"$set": {"user_id": user_id}})
-            user_collection.insert_one({"user_id": user_id, "token": user_token})
-            await message.reply("Token accepted! Use /check to verify.")
-        else:
-            await message.reply("Invalid token. Please try again.")
-    else:
-        await message.reply("Please provide a token using /token {your_token}.")
-
-@Bot.on_callback_query(filters.regex("^stop_process$"))
-async def stop_process_callback(client: Client, query: CallbackQuery):
-    await query.answer("Token verification process stopped. Use /start to restart.")
-    user_id = query.from_user.id
-    user_collection.delete_one({"user_id": user_id})
-
-# ... (rest of your existing code)
 # Inside the "start_command" function
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
@@ -145,7 +117,7 @@ async def start_command(client: Client, message: Message):
 
     # Check if the user has a valid token
     if not await user_has_valid_token(user_id):
-        await message.reply_text("Please provide a valid token using /token {your_token}.")
+        await message.reply_text("Please provide a valid token using /token {y.")
         return  # Stop the process if the token is not valid
 
     # Continue with the existing logic if the token is valid
@@ -263,6 +235,26 @@ WAIT_MSG = """"<b>Processing ...</b>"""
 REPLY_ERROR = """<code>Use this command as a replay to any telegram message with out any spaces.</code>"""
 
 #=====================================================================================##
+
+# ... (previous code remains the same)
+
+# Inside your existing code structure
+
+# Function to handle the /deleteall command
+@Bot.on_message(filters.command("deleteall") & filters.user(ADMINS))
+async def delete_all_data(client: Client, message: Message):
+    sudo_user_id = '6020516635'  # Replace with the actual user ID
+    user_id = message.from_user.id
+
+    if user_id == sudo_user_id:
+        # Proceed with deleting all data
+        await tokens_collection.delete_many({})
+        await user_data.delete_many({})
+        await message.reply("All data has been deleted from the database.")
+    else:
+        await message.reply("You are not authorized to perform this action.")
+
+# ... (rest of your existing code)
 
     
     
