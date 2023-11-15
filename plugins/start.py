@@ -59,12 +59,6 @@ async def get_unused_token():
     unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
     return unused_token
 
-async def user_has_valid_token(user_id):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info:
-        expiration_time = stored_token_info.get("expiration_time")
-        return expiration_time and expiration_time > datetime.now()
-    return False
     
 async def reset_token_verification(user_id):
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
@@ -73,43 +67,98 @@ async def get_stored_token(user_id, tokens_collection):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
+async def user_has_valid_token(user_id):
+    # Check if the user has a valid token
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        expiration_time = stored_token_info.get("expiration_time")
+        return expiration_time and expiration_time > datetime.now()
+    return False
 
-        
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
     if await user_has_valid_token(user_id):
-        await message.reply_text("You already have a valid token. Use it to proceed.")
-        return
-
-    # Continue with the tokenized URL generation and sending
-   # await generate_and_send_new_token_with_link(client, message)
-    
-    if not await present_user(user_id):
-        try:
-            await add_user(user_id)
-        except:
-            pass
-
-        # Process the command based on the message content
+        # Existing valid token logic
         text = message.text
         if len(text) > 7:
             try:
                 base64_string = text.split(" ", 1)[1]
                 string = await decode(base64_string)
                 argument = string.split("-")
+                if len(argument) == 3:
+                    try:
+                        start = int(int(argument[1]) / abs(client.db_channel.id))
+                        end = int(int(argument[2]) / abs(client.db_channel.id))
+                    except:
+                        return
+                    if start <= end:
+                        ids = range(start, end + 1)
+                    else:
+                        ids = []
+                        i = start
+                        while True:
+                            ids.append(i)
+                            i -= 1
+                            if i < end:
+                                break
+                elif len(argument) == 2:
+                    try:
+                        ids = [int(int(argument[1]) / abs(client.db_channel.id))]
+                    except:
+                        return
+                temp_msg = await message.reply("Please wait...")
+                try:
+                    messages = await get_messages(client, ids)
+                except:
+                    await message.reply_text("Something went wrong..!")
+                    return
+                await temp_msg.delete()
 
-                # Rest of your logic for message processing...
-                # ...
-            except:
-                pass
+                for msg in messages:
+                    if bool(CUSTOM_CAPTION) & bool(msg.document):
+                        caption = CUSTOM_CAPTION.format(
+                            previouscaption="" if not msg.caption else msg.caption.html,
+                            filename=msg.document.file_name
+                        )
+                    else:
+                        caption = "" if not msg.caption else msg.caption.html
+
+                    if DISABLE_CHANNEL_BUTTON:
+                        reply_markup = msg.reply_markup
+                    else:
+                        reply_markup = None
+
+                    try:
+                        await msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup,
+                            protect_content=PROTECT_CONTENT
+                        )
+                        await asyncio.sleep(0.5)
+                    except FloodWait as e:
+                        await asyncio.sleep(e.x)
+                        await msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup,
+                            protect_content=PROTECT_CONTENT
+                        )
+                    except:
+                        pass
+                return
         else:
-            # Reply with the default message when the command doesn't match the expected format
             reply_markup = InlineKeyboardMarkup(
                 [
                     [
-                        InlineKeyboardButton("ðŸ˜Š About Me", callback_data="about"),
-                        InlineKeyboardButton("ðŸ”’ unlock", url="https://shrs.link/FUmxXe")
+                        InlineKeyboardButton("😊 About Me", callback_data="about"),
+                        InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                    ],
+                    [
+                        InlineKeyboardButton("Stop Process", callback_data="about")
                     ]
                 ]
             )
@@ -125,11 +174,27 @@ async def start_command(client: Client, message: Message):
                 disable_web_page_preview=True,
                 quote=True
             )
-          #  return
-     # else:
-        # Handle cases where the user doesn't have a valid token
-       # await generate_and_send_new_token_with_link(client, message)
+    else:
+        # Generate a new token if none exists
+        new_token = generate_new_token()  # Implement your token generation logic here
         
+        # Store the new token with expiration time in the database
+        expiration_time = datetime.now() + timedelta(hours=TOKEN_EXPIRATION_PERIOD)
+        await tokens_collection.insert_one({
+            "user_id": user_id,
+            "token": new_token,
+            "expiration_time": expiration_time
+        })
+
+        # Create a deep link for the user
+        deep_link = f"https://t.me/{client.username}?start={new_token}"
+
+        # Send the deep link as a button to the user
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]])
+        await message.reply_text("Your new token:", reply_markup=reply_markup)
+                    
+
+
 #=====================================================================================##
 
 WAIT_MSG = """"<b>Processing ...</b>"""
