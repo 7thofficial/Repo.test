@@ -53,18 +53,7 @@ async def get_stored_token(user_id, tokens_collection):
     return stored_token_info["token"] if stored_token_info else None
     
 # 1. Generate and Save Token with Expiry in Database
-async def generate_24h_token(user_id, tokens_collection):
-    # Generate a token
-    token = secrets.token_hex(8)
-    expiration_time = datetime.now() + timedelta(hours=TOKEN_EXPIRATION_PERIOD)
 
-    # Save the token and its expiration time to the database
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token": token, "expiration_time": expiration_time}},
-        upsert=True
-    )
-    return token
 async def process_matching_token(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
@@ -76,8 +65,8 @@ async def process_matching_token(client: Client, message: Message):
         if provided_token == stored_token:
             # Token matches, proceed with the action
             print("Token matched.")
-            await save_token_match_status(user_id, True, message)  # Save token match status in the database
-            await further_logic(client, message)  # Your further logic here
+            await verify_token(user_id, True, message)  # Save token match status in the database
+            # Your further logic here
         else:
             # Token didn't match, reply and request verification
             new_token = await generate_24h_token(user_id, tokens_collection)
@@ -120,18 +109,6 @@ async def generate_24h_token(user_id, tokens_collection):
     )
     return token
 
-# ... (other functions remain unchanged)
-async def generate_and_save_token(user_id):
-    token = secrets.token_urlsafe(16)
-    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-
-    # Save the token and expiration time in the database
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token": token, "expiration_time": expiration_time}},
-        upsert=True
-    )
-    return token
     
 # Check and verify the provided token
 async def verify_token(user_id, provided_token):
