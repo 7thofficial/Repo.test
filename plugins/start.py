@@ -99,6 +99,8 @@ async def start_command(client: Client, message: Message):
         ])
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
 
+# ... (other functions and imports)
+
 async def process_matching_token(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
@@ -110,9 +112,8 @@ async def process_matching_token(client: Client, message: Message):
         if provided_token == stored_token:
             # Token matches, proceed with the action
             print("Token matched.")
-            await save_token_match_status(user_id, True)  # Save token match status in the database
+            await save_token_match_status(user_id, True, message)  # Pass 'message' here
             # Your further logic here
-            # await further_logic(client, message)  # Include your further logic here
         else:
             # Token didn't match, generate a new token and deep link
             new_token = await generate_24h_token(user_id, tokens_collection)
@@ -136,9 +137,7 @@ async def process_matching_token(client: Client, message: Message):
         ])
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
 
-# ... (rest of the code)
-
-async def save_token_match_status(user_id, match_status):
+async def save_token_match_status(user_id, match_status, message):
     # Update the token match status in the database
     await tokens_collection.update_one(
         {"user_id": user_id},
@@ -146,12 +145,15 @@ async def save_token_match_status(user_id, match_status):
         upsert=True
     )
 
+    # You can use 'message' here as needed
     id = message.from_user.id
     if not await present_user(id):
         try:
             await add_user(id)
         except:
             pass
+    # ... (other logic)
+
     text = message.text
     if len(text) > 7:
         try:
