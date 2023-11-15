@@ -72,9 +72,9 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
             await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
             return  # Exit the function without further processing
 
-    base64_string = f"{stored_token}"  # Remove 'await' here
+ #   base64_string = f"{stored_token}"  # Remove 'await' here
     base_url = f"https://t.me/{client.username}"
-    tokenized_url = f"{base_url}?start={base64_string}"
+    tokenized_url = f"{base_url}?start={stored_token}"
     
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
