@@ -201,17 +201,32 @@ async def start_command(client: Client, message: Message):
         await tokens_collection.insert_one({
             "user_id": user_id,
             "token": new_token,
-            "expiration_time": expiration_time
+            "expiration_time": expiration_time,
+            "verified": False
         })
 
         # Create a deep link for the user
         deep_link = f"https://t.me/{client.username}?start={new_token}"
 
         # Send the deep link as a button to the user
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]])
-        await message.reply_text("Your new token:", reply_markup=reply_markup)
+        #reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]])
+        #await message.reply_text("Your new token:", reply_markup=reply_markup)
+        deep_link = f"https://t.me/{client.username}?start={new_token}"
+        await message.reply_text(f"Your new token: {new_token}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]]))
         
+        
+        
+expiration_time = datetime.now() + timedelta(hours=24)
+        tokens_collection.insert_one({
+            "user_id": user_id,
+            "token": new_token,
+            "expiration_time": expiration_time,
+            "verified": False  # Initially, the token is not verified
+        })
 
+        # Provide the new token to the user
+        deep_link = f"https://t.me/{client.username}?start={new_token}"
+        await message.reply_text(f"Your new token: {new_token}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]]))
 
 #=====================================================================================##
 
@@ -220,6 +235,22 @@ WAIT_MSG = """"<b>Processing ...</b>"""
 REPLY_ERROR = """<code>Use this command as a replay to any telegram message with out any spaces.</code>"""
 
 #=====================================================================================##
+# Add logic to verify the provided token when the user clicks the link and starts the bot with the provided token
+@Bot.on_message(filters.command('start') & filters.private & filters.regex(r'start=(\w+)'))
+async def verify_token(client: Client, message):
+    user_id = message.from_user.id
+    provided_token = message.matches[0].group(1)
+
+    # Check if the provided token matches the stored token for the user
+    stored_token = tokens_collection.find_one({"user_id": user_id, "token": provided_token})
+
+    if stored_token:
+        # If the tokens match, mark the token as verified in the database
+        tokens_collection.update_one({"user_id": user_id, "token": provided_token}, {"$set": {"verified": True}})
+        await message.reply_text("Your provided token is valid. You don't need to verify it again.")
+    else:
+        await message.reply_text("The provided token is invalid.")
+
 
 @Bot.on_message(filters.command('deleteall'))
 async def delete_all_data(client: Client, message: Message):
