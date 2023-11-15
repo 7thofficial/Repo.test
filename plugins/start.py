@@ -45,12 +45,19 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
     return None  # Return None if any error occurs
 
     
+async def encode_token(token):
+    # Encode the token to base64 before storing in the database
+    encoded_token = await encode(token)
+    return encoded_token
+
+# When generating a token, encode it and save the encoded token
 async def generate_24h_token(user_id, tokens_collection):
     token = secrets.token_hex(8)
+    encoded_token = await encode_token(token)
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
     await tokens_collection.update_one(
         {"user_id": user_id},
-        {"$set": {"token": token, "expiration_time": expiration_time}},
+        {"$set": {"token": encoded_token, "expiration_time": expiration_time}},
         upsert=True
     )
    
@@ -100,17 +107,16 @@ async def get_stored_base64_string(user_id, tokens_collection):
     return stored_token_info["base64_string"] if stored_token_info else None
     
         
+# When verifying the provided token
 async def verify_token_from_url(user_id, provided_base64_string):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
-        stored_token = stored_token_info["token"]
-        decoded_stored_token = await (stored_token)  # Decoding the stored token
+        stored_encoded_token = stored_token_info["token"]
+        decoded_stored_token = await decode(stored_encoded_token)  # Decoding the stored token
         decoded_provided_token = await decode(provided_base64_string)  # Decoding the provided base64 string
         if decoded_stored_token == decoded_provided_token:
             return True
     return False
-
-
 # This function will handle the opening of the short link
 
 @Bot.on_inline_query()
@@ -244,27 +250,16 @@ async def check_command(client: Client, message: Message):
 @Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
+       if base64_decoded == stored_base64_string:
+    is_valid_token = await verify_token_from_url(user_id, stored_base64_string)
 
-    if len(message.text.split()) > 1:
-        base64_command = message.text.split()[1]
-        base64_decoded = await decode(base64_command)
-        stored_base64_string = await get_stored_base64_string(user_id, tokens_collection)
-
-        if base64_decoded == stored_base64_string:
-            # Matched! Proceed with the required action
-            # Your logic for handling when the base64 strings match
-
-            # Example logic: Verify the token from the provided base64 string
-            is_valid_token = await verify_token_from_url(user_id, stored_base64_string)
-
-            if is_valid_token:
-                # Valid token provided by the user, proceed with the action
-                await message.reply_text("Valid token! Proceeding with the action.")
-                # Your further logic here
-            else:
-                # Invalid token provided by the user
-                await message.reply_text("Invalid token! Access denied.")
-
+    if is_valid_token:
+        # Valid token provided by the user, proceed with the action
+        await message.reply_text("Valid token! Proceeding with the action.")
+        # Your further logic here
+    else:
+        # Invalid token provided by the user
+        await message.reply_text("Invalid token! Access denied.")
         else:
             # Didn't match; continue with the tokenized URL generation and sending
             await generate_and_send_new_token_with_link(client, message)
