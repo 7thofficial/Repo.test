@@ -104,7 +104,7 @@ async def verify_token_from_url(user_id, provided_base64_string):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
         stored_token = stored_token_info["token"]
-        decoded_stored_token = await decode(stored_token)  # Decoding the stored token
+        decoded_stored_token = await (stored_token)  # Decoding the stored token
         decoded_provided_token = await decode(provided_base64_string)  # Decoding the provided base64 string
         if decoded_stored_token == decoded_provided_token:
             return True
