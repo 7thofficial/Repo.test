@@ -4,14 +4,25 @@ from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
-
+import random
 from bot import Bot
-from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
 from helper_func import subscribed, encode, decode, get_messages
 from database.database import add_user, del_user, full_userbase, present_user
+import logging
+from datetime import datetime, timedelta
+import secrets
+import pymongo
+from motor import motor_asyncio
 
+# Use motor for asynchronous MongoDB operations
+dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
+database = dbclient[DB_NAME]
+tokens_collection = database["tokens"]
+user_data = database['users']
 
-
+# Token expiration period (1 day in seconds)
+TOKEN_EXPIRATION_PERIOD = 86
 
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
