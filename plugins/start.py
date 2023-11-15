@@ -24,6 +24,15 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
 
+# Function to get unused tokens for a user
+async def get_unused_token(user_id):
+    user_token = await tokens_collection.find_one({"user_id": user_id})
+    
+    if user_token and user_token["expiry_time"] > datetime.now():
+        return user_token["token"]
+    else:
+        return None
+        
 # Function to generate a token for a user
 async def generate_token(user_id):
     token = secrets.token_hex(16)  # Generate a random token
@@ -172,9 +181,27 @@ async def start_command(client: Client, message: Message):
         except Exception as e:
             print(e)  # Handle exceptions accordingly
            
+# Function to check the remaining time for a user's token
+async def check_token(client: Client, message: Message):
+    id = message.from_user.id
+    user_token = await tokens_collection.find_one({"user_id": id})
+    
+    if user_token:
+        remaining_time = user_token["expiry_time"] - datetime.now()
+        remaining_hours = remaining_time.total_seconds() // 3600
+        remaining_minutes = (remaining_time.total_seconds() % 3600) // 60
+        
+        await message.reply_text(f"Your token is valid. Time remaining: {int(remaining_hours)} hours and {int(remaining_minutes)} minutes.")
+    else:
+        await message.reply_text("You don't have a valid token.")
 
+# ... (
                
+@Bot.on_message(filters.command('check') & filters.private)
+async def check_command(client: Client, message: Message):
+    await check_token(client, message)
 
+# ... (
 
     
 #=====================================================================================##
