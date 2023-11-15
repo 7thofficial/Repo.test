@@ -25,7 +25,21 @@ SHORT_API = "d20fd8cb82117442858d7f2acdb75648e865d2f9"
 TOKEN_EXPIRATION_PERIOD = 100
 
 logger = logging.getLogger(__name__)
-
+async def generate_new_token():
+    # Generate a new token (random string)
+    new_token = secrets.token_hex(16)  # Generates a 32-character random string
+    
+    # Calculate token expiration time (24 hours from now)
+    expiration_time = datetime.now() + timedelta(hours=1)
+    
+    # Store the new token with expiration time in the database
+    await tokens_collection.insert_one({
+        "token": new_token,
+        "expiration_time": expiration_time
+    })
+    
+    return new_token
+    
 async def shorten_url_with_shareusio(url, short_url, short_api):
     api_endpoint = f'http://{short_url}/api'  # Adding 'http://' as the schema
     params = {'api': short_api, 'url': url}
