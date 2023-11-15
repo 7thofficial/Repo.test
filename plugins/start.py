@@ -45,10 +45,6 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
     return None  # Return None if any error occurs
 
     
-async def encode_token(token):
-    # Encode the token to base64 before storing in the database
-    encoded_token = await encode(token)
-    return encoded_token
 
 # When generating a token, encode it and save the encoded token
 async def generate_24h_token(user_id, tokens_collection):
@@ -74,7 +70,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
             await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
             return  # Exit the function without further processing
 
-    base64_string = await encode(f"token_{stored_token}")
+    base64_string = await (f"{stored_token}")
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start={base64_string}"
     
@@ -112,54 +108,14 @@ async def verify_token_from_url(user_id, provided_base64_string):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
         stored_encoded_token = stored_token_info["token"]
-        decoded_stored_token = await decode(stored_encoded_token)  # Decoding the stored token
-        decoded_provided_token = await decode(provided_base64_string)  # Decoding the provided base64 string
+        decoded_stored_token = await (stored_encoded_token)  # Decoding the stored token
+        decoded_provided_token = await (provided_base64_string)  # Decoding the provided base64 string
         if decoded_stored_token == decoded_provided_token:
             return True
     return False
 # This function will handle the opening of the short link
 
-@Bot.on_inline_query()
-async def open_short_link(client, update):
-    query = update.inline_query.query
-    token = query.split("_", 1)[-1]  # Extracting the token part from the query
-    user_id = update.inline_query.from_user.id
 
-    # Assuming the token is part of the query and extracted as 'token'
-    is_valid_token = await verify_token_from_url(user_id, token)
-
-    if is_valid_token:
-        await update.inline_query.answer([
-            InlineQueryResultArticle(
-                title="Token verified! Proceed with the desired action.",
-                input_message_content=InputTextMessageContent(
-                    message_text="Token verified! Proceed with the desired action."
-                )
-            )
-        ])
-    else:
-        await update.inline_query.answer([
-            InlineQueryResultArticle(
-                title="Invalid token! Access denied.",
-                input_message_content=InputTextMessageContent(
-                    message_text="Invalid token! Access denied."
-                )
-            )
-        ])
-
-
-async def encode(string):
-    string_bytes = string.encode("ascii")
-    base64_bytes = base64.urlsafe_b64encode(string_bytes)
-    base64_string = (base64_bytes.decode("ascii")).strip("=")
-    return base64_string
-
-async def decode(base64_string):
-    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
-    base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
-    string_bytes = base64.urlsafe_b64decode(base64_bytes) 
-    string = string_bytes.decode("ascii")
-    return string
 
 # Other parts of your code remain unchanged
 # Ensure you integrate these adjustments into your existing codebase and test thoroughly.
@@ -170,7 +126,7 @@ database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
 user_data = database['users']
 
-# Token expiration period (1 day in seconds)
+# Token expiration perid (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 100
 
 
