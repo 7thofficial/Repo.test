@@ -33,51 +33,23 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 100
 
-async def process_matching_token(client: Client, message: Message):
-    user_id = message.from_user.id
+# Function to check if the user has a valid token
+async def user_has_valid_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    stored_token = stored_token_info.get("token") if stored_token_info else None
+    if stored_token_info:
+        expiration_time = stored_token_info.get("expiration_time")
+        return expiration_time and expiration_time > datetime.now()
+    return False
 
-    if stored_token:
-        provided_token = message.command[1] if len(message.command) > 1 else None
-
-        if await verify_token(user_id, provided_token):
-            # Token matches, proceed with the action
-            print("Token matched.")
-             
-        else:
-            # Token didn't match, reply and request verification
-            new_token = await generate_24h_token(user_id, tokens_collection)
-            new_deep_link = create_telegram_deep_link(new_token)
-            print("Token mismatch. New token and link generated:", new_token, new_deep_link)
-
-            # Present the deep link with the token as a button for user verification
-            reply_markup = InlineKeyboardMarkup([
-                [InlineKeyboardButton("Verify Token", url=new_deep_link)]
-            ])
-            await message.reply_text("Please verify your token.", reply_markup=reply_markup)
-    else:
-        # No stored token found, generate a new token and store it
-        new_token = await generate_24h_token(user_id, tokens_collection)
-        new_deep_link = create_telegram_deep_link(new_token)
-        print("No stored token. New token and link generated:", new_token, new_deep_link)
-
-        # Present the deep link with the token as a button for user verification
-        reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Verify Token", url=new_deep_link)]
-        ])
-        await message.reply_text("Please verify your token.", reply_markup=reply_markup)
-
-
+# Function to generate a 24-hour token for a specific user and save it to the database
 async def generate_24h_token(user_id, tokens_collection):
-    # Check if the user already has a valid token
     if await user_has_valid_token(user_id):
         stored_token_info = await tokens_collection.find_one({"user_id": user_id})
         return stored_token_info["token"]
 
     # Generate a token
     token = secrets.token_hex(8)
-    expiration_time = datetime.now() + timedelta(TOKEN_EXPIRATION_PERIOD)
+    expiration_time = datetime.now() + timedelta(hours=TOKEN_EXPIRATION_PERIOD)
 
     # Save the token and its expiration time to the database
     await tokens_collection.update_one(
@@ -87,118 +59,63 @@ async def generate_24h_token(user_id, tokens_collection):
     )
     return token
 
-    
-# Check and verify the provided token
-async def verify_token(user_id, provided_token):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info:
-        stored_token = stored_token_info.get("token")
-        expiration_time = stored_token_info.get("expiration_time")
-
-        if stored_token == provided_token and expiration_time > datetime.now():
-            # Token matches and is valid
-            return True, "Token is valid"
-        else:
-            return False, "Token is invalid or expired"
-    else:
-        return False, "Token not found for user"
-
-# Logic to handle user connection attempt
-async def handle_user_connection(user_id, provided_token):
-    verified, message = await verify_token(user_id, provided_token)
-
-    if verified:
-        # Token is valid, return details to the user or grant access
-        return "Token verification successful, granting access"
-    else:
-        # Token is invalid or expired, prompt the user to try again or take action accordingly
-        return f"Token verification failed: {message}"
-
-async def save_token_match_status(user_id, match_status, message):
-    # Update the token match status in the database
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token_match": match_status}},
-        upsert=True
-    )
-    
-# 2. Create a Telegram Deep Link with the Token
-def create_telegram_deep_link(token):
-    # Construct a deep link with the token parameter
-    deep_link = f"https://t.me/blank_s_bot?start={token}"
-    return deep_link
-    
+# Command handler for /start
 @Bot.on_message(filters.command('start') & filters.private)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
-    # Simulate a user connection attempt with the provided token
-
-    # Extract token from the deep link
-    provided_token = message.command[1] if len(message.command) > 1 else None
-
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     stored_token = stored_token_info.get("token") if stored_token_info else None
 
-    if provided_token == stored_token:
-        # Token matches, proceed with the action
-        print("Token matched.")
-        # Your further logic here
-        await process_matching_token(client, message)
+    if stored_token:
+        # Token exists, proceed with your logic
+        id = message.from_user.id
+        if not await present_user(id):
+            try:
+                await add_user(id)
+            except:
+                pass
+
+        text = message.text
+        if len(text) > 7:
+            try:
+                base64_string = text.split(" ", 1)[1]
+            except:
+                return
+            # ... (Rest of your code for handling the token logic)
+        else:
+            # Regular start command behavior when tokens match
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("😊 About Me", callback_data="about"),
+                        InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                    ]
+                ]
+            )
+            await message.reply_text(
+                text=START_MSG.format(
+                    first=message.from_user.first_name,
+                    last=message.from_user.last_name,
+                    username=None if not message.from_user.username else '@' + message.from_user.username,
+                    mention=message.from_user.mention,
+                    id=message.from_user.id
+                ),
+                reply_markup=reply_markup,
+                disable_web_page_preview=True,
+                quote=True
+            )
     else:
-        # Token didn't match, generate a new token and deep link
+        # No token exists, generate a new token and deep link
         new_token = await generate_24h_token(user_id, tokens_collection)
         new_deep_link = create_telegram_deep_link(new_token)
-        print("Token mismatch. New token and link generated:", new_token, new_deep_link)
-        provided_token = "user_provided_token"
-        verification_result = await handle_user_connection(user_id, provided_token)
-        print(verification_result)
+        print("New token and link generated:", new_token, new_deep_link)
+
         # Present the deep link with the token as a button for user verification
         reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("Verify Token", url=new_deep_link)]
         ])
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
 
-# ... (other functions and imports)
-# ... (other functions and imports)
-
-    # You can use 'message' here as needed
-    id = message.from_user.id
-    if not await present_user(id):
-        try:
-            await add_user(id)
-        except:
-            pass
-    # ... (other logic)
-
-    text = message.text
-    if len(text) > 7:
-        try:
-            base64_string = text.split(" ", 1)[1]
-        except:
-            return
-        # ... (Rest of your code for handling the token logic)
-    else:
-        # Regular start command behavior when tokens match
-        reply_markup = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton("😊 About Me", callback_data="about"),
-                    InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
-                ]
-            ]
-        )
-        await message.reply_text(
-            text=START_MSG.format(
-                first=message.from_user.first_name,
-                last=message.from_user.last_name,
-                username=None if not message.from_user.username else '@' + message.from_user.username,
-                mention=message.from_user.mention,
-                id=message.from_user.id
-            ),
-            reply_markup=reply_markup,
-            disable_web_page_preview=True,
-            quote=True
-    )
         
 
     
