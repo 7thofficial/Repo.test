@@ -181,6 +181,8 @@ async def start_command(client: Client, message: Message):
         except Exception as e:
             print(e)  # Handle exceptions accordingly
            
+# ... (Your existing code remains unchanged up to the function definitions)
+
 # Function to check the remaining time for a user's token
 async def check_token(client: Client, message: Message):
     id = message.from_user.id
@@ -195,13 +197,14 @@ async def check_token(client: Client, message: Message):
     else:
         await message.reply_text("You don't have a valid token.")
 
-# ... (
-               
+# ... (Your other existing functions)
+
 @Bot.on_message(filters.command('check') & filters.private)
 async def check_command(client: Client, message: Message):
     await check_token(client, message)
 
-# ... (
+# ... (Your remaining code)
+
 
     
 #=====================================================================================##
