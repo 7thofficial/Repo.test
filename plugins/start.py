@@ -58,50 +58,21 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
             await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
             return  # Exit the function without further processing
 
-    base64_string = f"{stored_token}"  # Remove 'await' here
-    base_url = f"https://t.me/{client.username}"
-    tokenized_url = f"{base_url}?start={stored_token}"
+   # base64_string = f"{stored_token}"  # Remove 'await' here
+   # base_url = f"https://t.me/{client.username}"
+    tokenized_url = f"https://t.me/{client.username}?start={stored_token}"
     
     short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
     
     if short_link:
-        await save_base64_string(user_id, base64_string, tokens_collection)
+        await save_base64_string(user_id, stored_token, tokens_collection)
         # Rest of your code
     else:
         await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
 
-# ... (other parts of your code)
-
-# Inside your code, add the following function to save the base64_string:
-
-async def save_base64_string(user_id, base64_string, tokens_collection):
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"base64_string": base64_string}},
-        upsert=True
-    )
-
-async def get_stored_base64_string(user_id, tokens_collection):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    return stored_token_info["base64_string"] if stored_token_info else None
-    
-        
-# When verifying the provided token
-async def verify_token_from_url(user_id, provided_base64_string):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info:
-        stored_encoded_token = stored_token_info["token"]
-        decoded_stored_token = await (stored_encoded_token)  # Decoding the stored token
-        decoded_provided_token = await (provided_base64_string)  # Decoding the provided base64 string
-        if decoded_stored_token == decoded_provided_token:
-            return True
-    return False
+# ... (other parts of your 
 # This function will handle the opening of the short link
 
-
-
-# Other parts of your code remain unchanged
-# Ensure you integrate these adjustments into your existing codebase and test thoroughly.
 
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
@@ -109,7 +80,7 @@ database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
 user_data = database['users']
 
-# Token expiration perid (1 day in seconds)
+# Token expiration prid (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 100
 
 
@@ -130,12 +101,6 @@ async def reset_token_verification(user_id):
 async def get_stored_token(user_id, tokens_collection):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
-
-
-async def generate_and_send_new_token(client: Client, message: Message):
-    user_id = message.from_user.id
-    token = await generate_24h_token(user_id)
-    await message.reply(f"Your new token: {token}")
 
 
 @Bot.on_message(filters.command('deleteall'))
