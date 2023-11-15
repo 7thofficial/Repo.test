@@ -75,6 +75,7 @@ async def user_has_valid_token(user_id):
         return expiration_time and expiration_time > datetime.now()
     return False
 
+              
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -150,6 +151,8 @@ async def start_command(client: Client, message: Message):
                     except:
                         pass
                 return
+            except:
+                pass  # Add handling for any specific exceptions here if needed
         else:
             reply_markup = InlineKeyboardMarkup(
                 [
@@ -192,8 +195,7 @@ async def start_command(client: Client, message: Message):
         # Send the deep link as a button to the user
         reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]])
         await message.reply_text("Your new token:", reply_markup=reply_markup)
-                    
-
+        
 
 #=====================================================================================##
 
