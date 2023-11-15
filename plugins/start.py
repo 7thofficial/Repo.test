@@ -1,4 +1,3 @@
-
 import os
 import asyncio
 import base64
@@ -115,50 +114,62 @@ async def start_command(client: Client, message: Message):
                     return
                 await temp_msg.delete()
                 for msg in messages:
+                    if bool(CUSTOM_CAPTION) & bool(msg.document):
+                        caption = CUSTOM_CAPTION.format(
+                            previouscaption="" if not msg.caption else msg.caption.html,
+                            filename=msg.document.file_name
+                        )
+                    else:
+                        caption = "" if not msg.caption else msg.caption.html
 
-            if bool(CUSTOM_CAPTION) & bool(msg.document):
-                caption = CUSTOM_CAPTION.format(previouscaption = "" if not msg.caption else msg.caption.html, filename = msg.document.file_name)
+                    if DISABLE_CHANNEL_BUTTON:
+                        reply_markup = msg.reply_markup
+                    else:
+                        reply_markup = None
+
+                    try:
+                        await msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup,
+                            protect_content=PROTECT_CONTENT
+                        )
+                        await asyncio.sleep(0.5)
+                    except FloodWait as e:
+                        await asyncio.sleep(e.x)
+                        await msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup,
+                            protect_content=PROTECT_CONTENT
+                        )
+                    except:
+                        pass
+                return
             else:
-                caption = "" if not msg.caption else msg.caption.html
-
-            if DISABLE_CHANNEL_BUTTON:
-                reply_markup = msg.reply_markup
-            else:
-                reply_markup = None
-
-            try:
-                await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
-                await asyncio.sleep(0.5)
-            except FloodWait as e:
-                await asyncio.sleep(e.x)
-                await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
-            except:
-                pass
-        return
-
-                
-        else:
-            # Regular start command behavior when tokens match
-            reply_markup = InlineKeyboardMarkup(
-                [
+                # Regular start command behavior when tokens match
+                reply_markup = InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton("😊 About Me", callback_data="about"),
-                        InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                        [
+                            InlineKeyboardButton("😊 About Me", callback_data="about"),
+                            InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                        ]
                     ]
-                ]
-            )
-            await message.reply_text(
-                text=START_MSG.format(
-                    first=message.from_user.first_name,
-                    last=message.from_user.last_name,
-                    username=None if not message.from_user.username else '@' + message.from_user.username,
-                    mention=message.from_user.mention,
-                    id=message.from_user.id
-                ),
-                reply_markup=reply_markup,
-                disable_web_page_preview=True,
-                quote=True
-            )
+                )
+                await message.reply_text(
+                    text=START_MSG.format(
+                        first=message.from_user.first_name,
+                        last=message.from_user.last_name,
+                        username=None if not message.from_user.username else '@' + message.from_user.username,
+                        mention=message.from_user.mention,
+                        id=message.from_user.id
+                    ),
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True,
+                    quote=True
+                )
     else:
         # No token exists, generate a new token and provide the deep link to the user
         new_token = await generate_24h_token(user_id, tokens_collection)
@@ -170,6 +181,7 @@ async def start_command(client: Client, message: Message):
             [InlineKeyboardButton("Verify Token", url=new_deep_link)]
         ])
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
+        
                 
         
 #=====================================================================================##
