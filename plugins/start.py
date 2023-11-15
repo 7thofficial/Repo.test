@@ -24,9 +24,53 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
 
+# Function to generate or get a token for a user
+async def generate_or_get_token(user_id):
+    existing_token = await tokens_collection.find_one({"used": False, "user_id": user_id})
+
+    if existing_token:
+        token = existing_token["token"]
+        deep_link = f"https://t.me/{client.username}?start={token}"
+        await tokens_collection.update_one({"token": token}, {"$set": {"used": True}})
+    else:
+        token = secrets.token_urlsafe(16)
+        expiry_time = datetime.utcnow() + timedelta(hours=24)
+        await tokens_collection.insert_one({"token": token, "used": False, "expiry_time": expiry_time, "user_id": user_id})
+        deep_link = f"https://t.me/{client.username}?start={token}"
+
+    return deep_link
+# Function to verify a token
+async def verify_token(user_id, provided_token):
+    token_data = await tokens_collection.find_one({"token": provided_token, "used": False, "user_id": user_id})
+
+    if token_data:
+        await tokens_collection.update_one({"token": provided_token}, {"$set": {"used": True}})
+        return True
+    else:
+        return False
+        
+@Bot.on_message(filters.command('token')
+async def verify_command(client: Client, message: Message):
+    user_id = str(message.from_user.id)
+    provided_token = message.get_args()
+    if provided_token:
+        is_valid = await verify_token(user_id, provided_token)
+        if is_valid:
+            await message.reply("Token verified successfully!")
+        else:
+            await message.reply("Invalid or expired token.")
+    else:
+        await message.reply("Please provide a token for verification.")
+
+
+
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     id = message.from_user.id
+    user_id = str(message.from_user.id)
+    deep_link = await generate_or_get_token(user_id)
+    await message.reply(f"Here is your verification link: {deep_link}")
+    
     if not await present_user(id):
         try:
             await add_user(id)
