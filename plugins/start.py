@@ -214,20 +214,6 @@ async def start_command(client: Client, message: Message):
         deep_link = f"https://t.me/{client.username}?start={new_token}"
         await message.reply_text(f"Your new token: {new_token}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]]))
         
-        
-        
-expiration_time = datetime.now() + timedelta(hours=24)
-        tokens_collection.insert_one({
-            "user_id": user_id,
-            "token": new_token,
-            "expiration_time": expiration_time,
-            "verified": False  # Initially, the token is not verified
-        })
-
-        # Provide the new token to the user
-        deep_link = f"https://t.me/{client.username}?start={new_token}"
-        await message.reply_text(f"Your new token: {new_token}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Your Token", url=deep_link)]]))
-
 #=====================================================================================##
 
 WAIT_MSG = """"<b>Processing ...</b>"""
