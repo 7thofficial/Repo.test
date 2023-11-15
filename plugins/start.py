@@ -198,37 +198,21 @@ async def check_command(client: Client, message: Message):
     else:
         await message.reply("You are not registered. Please use /start to register.")
         
-@Bot.on_message(filters.command("start"))
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
+    if await user_has_valid_token(user_id):
+        await message.reply_text("You already have a valid token. Use it to proceed.")
+        return
 
-    stored_base64_string = await get_stored_base64_string(user_id, tokens_collection)
-    base64_decoded = None
-
-    if len(message.text.split()) > 1:
-        base64_command = message.text.split()[1]
-        base64_decoded = await (base64_command)
-
-    if base64_decoded == stored_base64_string:
-        is_valid_token = await verify_token_from_url(user_id, stored_base64_string)
-
-        if is_valid_token:
-            # Valid token provided by the user, proceed with the action
-            await message.reply_text("Valid token! Proceeding with the action.")
-            # Your further logic here
-        else:
-            # Invalid token provided by the user
-            await message.reply_text("Invalid token! Access denied.")
-    else:
-        # Didn't match; continue with the tokenized URL generation and sending
-        await generate_and_send_new_token_with_link(client, message)
-
-        # Add the user to the database if not present
-        if not await present_user(user_id):
-            try:
-                await add_user(user_id)
-            except:
-                pass
+    # Continue with the tokenized URL generation and sending
+    await generate_and_send_new_token_with_link(client, message)
+    
+    if not await present_user(user_id):
+        try:
+            await add_user(user_id)
+        except:
+            pass
 
         # Process the command based on the message content
         text = message.text
