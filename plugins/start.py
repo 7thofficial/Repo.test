@@ -11,7 +11,53 @@ from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL
 from helper_func import subscribed, encode, decode, get_messages
 from database.database import add_user, del_user, full_userbase, present_user
 
+# 1. Generate and Save Token with Expiry in Database
+async def generate_24h_token(user_id, tokens_collection):
+    # Generate a token
+    token = secrets.token_hex(8)
+    expiration_time = datetime.now() + timedelta(hours=24)
 
+    # Save the token and its expiration time to the database
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+    return token
+
+# 2. Create a Telegram Deep Link with the Token
+def create_telegram_deep_link(token):
+    # Construct a deep link with the token parameter
+    deep_link = f"https://t.me/{client.username}?start={token}"
+    return deep_link
+
+# 3. Handle the Verification of the Token in Bot
+@Bot.on_message(filters.command("start"))
+async def start_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Extract token from the deep link
+    provided_token = message.command[1] if len(message.command) > 1 else None
+
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    stored_token = stored_token_info.get("token") if stored_token_info else None
+
+    if provided_token == stored_token:
+        # Token matches, proceed with the action
+        print("Token matched.")
+        # Your further logic here
+    else:
+        # Token didn't match, generate a new token and deep link
+        new_token = await generate_24h_token(user_id, tokens_collection)
+        new_deep_link = create_telegram_deep_link(new_token)
+        print("Token mismatch. New token and link generated:", new_token, new_deep_link)
+
+        # Present the deep link with the token as a button for user verification
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Verify Token", url=new_deep_link)]
+        ])
+        await message.reply_text("Please verify your token.", reply_markup=reply_markup)
+        
 
 
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
