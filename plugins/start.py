@@ -248,101 +248,50 @@ async def check_command(client: Client, message: Message):
 
 
 @Bot.on_message(filters.command("start"))
+@Bot.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
-       if base64_decoded == stored_base64_string:
-    is_valid_token = await verify_token_from_url(user_id, stored_base64_string)
 
-    if is_valid_token:
-        # Valid token provided by the user, proceed with the action
-        await message.reply_text("Valid token! Proceeding with the action.")
-        # Your further logic here
-    else:
-        # Invalid token provided by the user
-        await message.reply_text("Invalid token! Access denied.")
+    stored_base64_string = await get_stored_base64_string(user_id, tokens_collection)
+    base64_decoded = None
+
+    if len(message.text.split()) > 1:
+        base64_command = message.text.split()[1]
+        base64_decoded = await decode(base64_command)
+
+    if base64_decoded == stored_base64_string:
+        is_valid_token = await verify_token_from_url(user_id, stored_base64_string)
+
+        if is_valid_token:
+            # Valid token provided by the user, proceed with the action
+            await message.reply_text("Valid token! Proceeding with the action.")
+            # Your further logic here
         else:
-            # Didn't match; continue with the tokenized URL generation and sending
-            await generate_and_send_new_token_with_link(client, message)
-            # Add the user to the database if not present
-            if not await present_user(user_id):
-                try:
-                    await add_user(user_id)
-                except:
-                    pass
+            # Invalid token provided by the user
+            await message.reply_text("Invalid token! Access denied.")
+    else:
+        # Didn't match; continue with the tokenized URL generation and sending
+        await generate_and_send_new_token_with_link(client, message)
+
+        # Add the user to the database if not present
+        if not await present_user(user_id):
+            try:
+                await add_user(user_id)
+            except:
+                pass
 
         # Process the command based on the message content
         text = message.text
         if len(text) > 7:
             try:
                 base64_string = text.split(" ", 1)[1]
+                string = await decode(base64_string)
+                argument = string.split("-")
+
+                # Rest of your logic for message processing...
+                # ...
             except:
-                return
-            string = await decode(base64_string)
-            argument = string.split("-")
-            if len(argument) == 3:
-                try:
-                    start = int(int(argument[1]) / abs(client.db_channel.id))
-                    end = int(int(argument[2]) / abs(client.db_channel.id))
-                except:
-                    return
-                if start <= end:
-                    ids = range(start, end + 1)
-                else:
-                    ids = []
-                    i = start
-                    while True:
-                        ids.append(i)
-                        i -= 1
-                        if i < end:
-                            break
-            elif len(argument) == 2:
-                try:
-                    ids = [int(int(argument[1]) / abs(client.db_channel.id))]
-                except:
-                    return
-            temp_msg = await message.reply("Please wait...")
-            try:
-                messages = await get_messages(client, ids)
-            except:
-                await message.reply_text("Something went wrong..!")
-                return
-            await temp_msg.delete()
-
-            for msg in messages:
-                if bool(CUSTOM_CAPTION) & bool(msg.document):
-                    caption = CUSTOM_CAPTION.format(
-                        previouscaption="" if not msg.caption else msg.caption.html,
-                        filename=msg.document.file_name
-                    )
-                else:
-                    caption = "" if not msg.caption else msg.caption.html
-
-                if DISABLE_CHANNEL_BUTTON:
-                    reply_markup = msg.reply_markup
-                else:
-                    reply_markup = None
-
-                try:
-                    await msg.copy(
-                        chat_id=message.from_user.id,
-                        caption=caption,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup,
-                        protect_content=PROTECT_CONTENT
-                    )
-                    await asyncio.sleep(0.5)
-                except FloodWait as e:
-                    await asyncio.sleep(e.x)
-                    await msg.copy(
-                        chat_id=message.from_user.id,
-                        caption=caption,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup,
-                        protect_content=PROTECT_CONTENT
-                    )
-                except:
-                    pass
-            return
+                pass
         else:
             # Reply with the default message when the command doesn't match the expected format
             reply_markup = InlineKeyboardMarkup(
