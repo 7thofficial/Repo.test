@@ -100,6 +100,7 @@ async def start_command(client: Client, message: Message):
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
 
 # ... (other functions and imports)
+# ... (other functions and imports)
 
 async def process_matching_token(client: Client, message: Message):
     user_id = message.from_user.id
@@ -112,10 +113,10 @@ async def process_matching_token(client: Client, message: Message):
         if provided_token == stored_token:
             # Token matches, proceed with the action
             print("Token matched.")
-            await save_token_match_status(user_id, True, message)  # Pass 'message' here
-            # Your further logic here
+            await save_token_match_status(user_id, True, message)  # Save token match status in the database
+            await further_logic(client, message)  # Your further logic here
         else:
-            # Token didn't match, generate a new token and deep link
+            # Token didn't match, reply and request verification
             new_token = await generate_24h_token(user_id, tokens_collection)
             new_deep_link = create_telegram_deep_link(new_token)
             print("Token mismatch. New token and link generated:", new_token, new_deep_link)
@@ -136,6 +137,28 @@ async def process_matching_token(client: Client, message: Message):
             [InlineKeyboardButton("Verify Token", url=new_deep_link)]
         ])
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
+
+
+async def generate_24h_token(user_id, tokens_collection):
+    # Check if the user already has a valid token
+    if await user_has_valid_token(user_id):
+        stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+        return stored_token_info["token"]
+
+    # Generate a token
+    token = secrets.token_hex(8)
+    expiration_time = datetime.now() + timedelta(TOKEN_EXPIRATION_PERIOD)
+
+    # Save the token and its expiration time to the database
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+    return token
+
+# ... (other functions remain unchanged)
+
 
 async def save_token_match_status(user_id, match_status, message):
     # Update the token match status in the database
