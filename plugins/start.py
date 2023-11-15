@@ -88,7 +88,39 @@ async def user_has_valid_token(user_id):
         expiration_time = stored_token_info.get("expiration_time")
         return expiration_time and expiration_time > datetime.now()
     return False
+# ... (existing code)
 
+# Main code
+# Define your existing message handlers, imports, and other code here
+
+# New code snippet to add
+
+@Bot.on_message(filters.command('start') & filters.private)
+async def start_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Extract the provided token from the command
+    if len(message.command) > 1:
+        provided_token = message.command[1]
+    else:
+        # No token provided, handle accordingly
+        return
+
+    # Retrieve the bot's user token from the database
+    bot_user_id = client.bot_user.id  # Get the bot's user ID
+    bot_user_token_info = await tokens_collection.find_one({"user_id": bot_user_id})
+
+    if bot_user_token_info:
+        bot_user_token = bot_user_token_info["token"]
+        if bot_user_token == provided_token:
+            # Update the token as verified for the user
+            await tokens_collection.update_one({"user_id": user_id, "token": provided_token}, {"$set": {"verified": True}})
+            await message.reply_text("Your provided token matches the bot's user token. Token verified.")
+        else:
+            await message.reply_text("The provided token is invalid.")
+    else:
+        await message.reply_text("No token found for the bot user.")
+        
               
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
