@@ -56,7 +56,7 @@ async def get_stored_token(user_id, tokens_collection):
 async def generate_24h_token(user_id, tokens_collection):
     # Generate a token
     token = secrets.token_hex(8)
-    expiration_time = datetime.now() + timedelta(hours=24)
+    expiration_time = datetime.now() + timedelta(TOKEN_EXPIRATION_PERIOD)
 
     # Save the token and its expiration time to the database
     await tokens_collection.update_one(
@@ -101,6 +101,50 @@ async def start_command(client: Client, message: Message):
 
 
 async def process_matching_token(client: Client, message: Message):
+    user_id = message.from_user.id
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    stored_token = stored_token_info.get("token") if stored_token_info else None
+
+    if stored_token:
+        provided_token = message.command[1] if len(message.command) > 1 else None
+
+        if provided_token == stored_token:
+            # Token matches, proceed with the action
+            print("Token matched.")
+            await save_token_match_status(user_id, True)  # Save token match status in the database
+            # Your further logic here
+            await further_logic(client, message)
+        else:
+            # Token didn't match, generate a new token and deep link
+            new_token = await generate_24h_token(user_id, provided_token, stored_token, tokens_collection)
+            new_deep_link = create_telegram_deep_link(new_token)
+            print("Token mismatch. New token and link generated:", new_token, new_deep_link)
+
+            # Present the deep link with the token as a button for user verification
+            reply_markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Verify Token", url=new_deep_link)]
+            ])
+            await message.reply_text("Please verify your token.", reply_markup=reply_markup)
+    else:
+        # No stored token found, generate a new token and store it
+        new_token = await generate_24h_token(user_id, None, None, tokens_collection)
+        new_deep_link = create_telegram_deep_link(new_token)
+        print("No stored token. New token and link generated:", new_token, new_deep_link)
+
+        # Present the deep link with the token as a button for user verification
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Verify Token", url=new_deep_link)]
+        ])
+        await message.reply_text("Please verify your token.", reply_markup=reply_markup)
+
+async def save_token_match_status(user_id, match_status):
+    # Update the token match status in the database
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token_match": match_status}},
+        upsert=True
+    )
+
     id = message.from_user.id
     if not await present_user(id):
         try:
