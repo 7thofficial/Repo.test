@@ -65,7 +65,7 @@ async def process_matching_token(client: Client, message: Message):
         if provided_token == stored_token:
             # Token matches, proceed with the action
             print("Token matched.")
-            await verify_token(user_id, True, message)  # Save token match status in the database
+            await verify_token(user_id, provided_token, True, message)  # Save token match status in the database
             # Your further logic here
         else:
             # Token didn't match, reply and request verification
