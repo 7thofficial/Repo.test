@@ -57,6 +57,8 @@ async def generate_24h_token(user_id, tokens_collection):
         upsert=True
     )
    
+# ... (other parts of your code)
+
 async def generate_and_send_new_token_with_link(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token = await get_stored_token(user_id, tokens_collection)
@@ -70,7 +72,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
             await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
             return  # Exit the function without further processing
 
-    base64_string = await (f"{stored_token}")
+    base64_string = f"{stored_token}"  # Remove 'await' here
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start={base64_string}"
     
@@ -78,16 +80,11 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     
     if short_link:
         await save_base64_string(user_id, base64_string, tokens_collection)
-        # Rest 
-        # Create an InlineKeyboardMarkup with a button leading to the shortened link
-        button = InlineKeyboardButton("Open Link", url=short_link)
-        keyboard = InlineKeyboardMarkup([[button]])
-        
-        # Send the message with the shortened link and the button
-        await message.reply_text("Here is your shortened link:", reply_markup=keyboard, disable_notification=True)
+        # Rest of your code
     else:
         await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
 
+# ... (other parts of your code)
 
 # Inside your code, add the following function to save the base64_string:
 
