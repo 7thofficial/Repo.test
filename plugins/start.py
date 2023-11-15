@@ -44,21 +44,7 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
         logger.error(f"Request Exception: {e}")
     return None  # Return None if any error occurs
 
-    
-
-# When generating a token, encode it and save the encoded token
-async def generate_24h_token(user_id, tokens_collection):
-    token = secrets.token_hex(8)
-    encoded_token = await encode_token(token)
-    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token": encoded_token, "expiration_time": expiration_time}},
-        upsert=True
-    )
-   
-# ... (other parts of your code)
-
+  
 async def generate_and_send_new_token_with_link(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token = await get_stored_token(user_id, tokens_collection)
@@ -72,7 +58,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
             await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
             return  # Exit the function without further processing
 
- #   base64_string = f"{stored_token}"  # Remove 'await' here
+    base64_string = f"{stored_token}"  # Remove 'await' here
     base_url = f"https://t.me/{client.username}"
     tokenized_url = f"{base_url}?start={stored_token}"
     
