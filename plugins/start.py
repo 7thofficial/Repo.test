@@ -59,7 +59,6 @@ async def generate_24h_token(user_id, tokens_collection):
     )
     return token
 
-# Command handler for /start
 @Bot.on_message(filters.command('start') & filters.private)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -67,45 +66,89 @@ async def start_command(client: Client, message: Message):
     stored_token = stored_token_info.get("token") if stored_token_info else None
 
     if stored_token:
-        # Token exists, proceed with your logic
-        id = message.from_user.id
-        if not await present_user(id):
-            try:
-                await add_user(id)
-            except:
-                pass
+        # Token exists, proceed with the verification process
+        # Check if the user sends the token via deep link and match it
+        provided_token = message.command[1] if len(message.command) > 1 else None
+        if provided_token == stored_token:
+            # Token matches, execute specific code
+            id = message.from_user.id
+            if not await present_user(id):
+                try:
+                    await add_user(id)
+                except:
+                    pass
 
-        text = message.text
-        if len(text) > 7:
-            try:
-                base64_string = text.split(" ", 1)[1]
-            except:
+            text = message.text
+            if len(text) > 7:
+                try:
+                    base64_string = text.split(" ", 1)[1]
+                except:
+                    return
+                string = await decode(base64_string)
+                argument = string.split("-")
+                if len(argument) == 3:
+                    try:
+                        start = int(int(argument[1]) / abs(client.db_channel.id))
+                        end = int(int(argument[2]) / abs(client.db_channel.id))
+                    except:
+                        return
+                    if start <= end:
+                        ids = range(start, end+1)
+                    else:
+                        ids = []
+                        i = start
+                        while True:
+                            ids.append(i)
+                            i -= 1
+                            if i < end:
+                                break
+                elif len(argument) == 2:
+                    try:
+                        ids = [int(int(argument[1]) / abs(client.db_channel.id))]
+                    except:
+                        return
+                temp_msg = await message.reply("Please wait...")
+                try:
+                    messages = await get_messages(client, ids)
+                except:
+                    await message.reply_text("Something went wrong..!")
+                    return
+                await temp_msg.delete()
+
+                for msg in messages:
+                    # Your code logic here for handling and copying messages
+                    pass
+
                 return
-            # ... (Rest of your code for handling the token logic)
-        else:
-            # Regular start command behavior when tokens match
-            reply_markup = InlineKeyboardMarkup(
-                [
+            else:
+                # Regular start command behavior when tokens match
+                reply_markup = InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton("😊 About Me", callback_data="about"),
-                        InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                        [
+                            InlineKeyboardButton("😊 About Me", callback_data="about"),
+                            InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                        ]
                     ]
-                ]
-            )
-            await message.reply_text(
-                text=START_MSG.format(
-                    first=message.from_user.first_name,
-                    last=message.from_user.last_name,
-                    username=None if not message.from_user.username else '@' + message.from_user.username,
-                    mention=message.from_user.mention,
-                    id=message.from_user.id
-                ),
-                reply_markup=reply_markup,
-                disable_web_page_preview=True,
-                quote=True
-            )
+                )
+                await message.reply_text(
+                    text=START_MSG.format(
+                        first=message.from_user.first_name,
+                        last=message.from_user.last_name,
+                        username=None if not message.from_user.username else '@' + message.from_user.username,
+                        mention=message.from_user.mention,
+                        id=message.from_user.id
+                    ),
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True,
+                    quote=True
+                )
+        else:
+            # Token doesn't match, handle this scenario as needed
+            # Provide instructions or ask the user to provide the correct token
+            # ...
+
     else:
-        # No token exists, generate a new token and deep link
+        # No token exists, generate a new token and provide the deep link to the user
         new_token = await generate_24h_token(user_id, tokens_collection)
         new_deep_link = create_telegram_deep_link(new_token)
         print("New token and link generated:", new_token, new_deep_link)
@@ -115,10 +158,7 @@ async def start_command(client: Client, message: Message):
             [InlineKeyboardButton("Verify Token", url=new_deep_link)]
         ])
         await message.reply_text("Please verify your token.", reply_markup=reply_markup)
-
         
-
-    
 #=====================================================================================##
 
 WAIT_MSG = """"<b>Processing ...</b>"""
