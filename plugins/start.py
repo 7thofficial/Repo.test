@@ -41,7 +41,7 @@ async def process_matching_token(client: Client, message: Message):
     if stored_token:
         provided_token = message.command[1] if len(message.command) > 1 else None
 
-        if await verify_token(user_id, provided_token)
+        if await verify_token(user_id, provided_token):
             # Token matches, proceed with the action
             print("Token matched.")
              
