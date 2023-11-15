@@ -121,7 +121,43 @@ async def generate_24h_token(user_id, tokens_collection):
     return token
 
 # ... (other functions remain unchanged)
+async def generate_and_save_token(user_id):
+    token = secrets.token_urlsafe(16)
+    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
 
+    # Save the token and expiration time in the database
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+    return token
+    
+# Check and verify the provided token
+async def verify_token(user_id, provided_token):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        stored_token = stored_token_info.get("token")
+        expiration_time = stored_token_info.get("expiration_time")
+
+        if stored_token == provided_token and expiration_time > datetime.now():
+            # Token matches and is valid
+            return True, "Token is valid"
+        else:
+            return False, "Token is invalid or expired"
+    else:
+        return False, "Token not found for user"
+
+# Logic to handle user connection attempt
+async def handle_user_connection(user_id, provided_token):
+    verified, message = await verify_token(user_id, provided_token)
+
+    if verified:
+        # Token is valid, return details to the user or grant access
+        return "Token verification successful, granting access"
+    else:
+        # Token is invalid or expired, prompt the user to try again or take action accordingly
+        return f"Token verification failed: {message}"
 
 async def save_token_match_status(user_id, match_status, message):
     # Update the token match status in the database
@@ -140,6 +176,7 @@ def create_telegram_deep_link(token):
 @Bot.on_message(filters.command('start') & filters.private)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
+    # Simulate a user connection attempt with the provided token
 
     # Extract token from the deep link
     provided_token = message.command[1] if len(message.command) > 1 else None
@@ -157,7 +194,9 @@ async def start_command(client: Client, message: Message):
         new_token = await generate_24h_token(user_id, tokens_collection)
         new_deep_link = create_telegram_deep_link(new_token)
         print("Token mismatch. New token and link generated:", new_token, new_deep_link)
-
+        provided_token = "user_provided_token"
+        verification_result = await handle_user_connection(user_id, provided_token)
+        print(verification_result)
         # Present the deep link with the token as a button for user verification
         reply_markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("Verify Token", url=new_deep_link)]
