@@ -193,7 +193,8 @@ async def start_command(client: Client, message: Message):
             )
     else:
         # Generate a new token if none exists
-        new_token = generate_new_token()  # Implement your token generation logic here
+        new_token = await generate_new_token()  # Correct - this properly awaits the coroutine
+# Implement your token generation logic here
         
         # Store the new token with expiration time in the database
         expiration_time = datetime.now() + timedelta(hours=TOKEN_EXPIRATION_PERIOD)
