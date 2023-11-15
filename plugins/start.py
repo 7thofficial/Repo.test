@@ -33,27 +33,6 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 100
 
-
-async def get_unused_token():
-    unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
-    return unused_token
-
-async def user_has_valid_token(user_id):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info:
-        expiration_time = stored_token_info.get("expiration_time")
-        return expiration_time and expiration_time > datetime.now()
-    return False
-    
-async def reset_token_verification(user_id):
-    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
-
-async def get_stored_token(user_id, tokens_collection):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    return stored_token_info["token"] if stored_token_info else None
-    
-# 1. Generate and Save Token with Expiry in Database
-
 async def process_matching_token(client: Client, message: Message):
     user_id = message.from_user.id
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
