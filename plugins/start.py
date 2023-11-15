@@ -312,9 +312,9 @@ async def start_command(client: Client, message: Message):
                 quote=True
             )
             return
-      else:
+     # else:
         # Handle cases where the user doesn't have a valid token
-        await generate_and_send_new_token_with_link(client, message)
+       # await generate_and_send_new_token_with_link(client, message)
         
 #=====================================================================================##
 
