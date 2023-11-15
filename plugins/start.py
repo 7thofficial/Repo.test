@@ -83,7 +83,7 @@ async def start_command(client: Client, message: Message):
         return
 
     # Continue with the tokenized URL generation and sending
-    await generate_and_send_new_token_with_link(client, message)
+   # await generate_and_send_new_token_with_link(client, message)
     
     if not await present_user(user_id):
         try:
