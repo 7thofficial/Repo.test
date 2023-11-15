@@ -24,16 +24,36 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
 
-@Bot.on_message(filters.command('start') & filters.private & subscribed)
-async def start_command(client: Client, message: Message):
+# Function to generate a token for a user
+async def generate_token(user_id):
+    token = secrets.token_hex(16)  # Generate a random token
+    expiry_time = datetime.now() + timedelta(hours=24)  # Set the token expiration time (24 hours)
+    
+    # Save the token and its expiration time in the database for the user
+    await tokens_collection.insert_one({"user_id": user_id, "token": token, "expiry_time": expiry_time})
+    return token
+
+# Function to check if a token is valid for a user
+async def verify_token(user_id, provided_token):
+    user_token = await tokens_collection.find_one({"user_id": user_id})
+    
+    if user_token and user_token["token"] == provided_token and user_token["expiry_time"] > datetime.now():
+        return True  # Token is valid
+    else:
+        return False  # Token is invalid or expired
+
+
+# Function to handle the start command logic
+async def handle_start_command(client: Client, message: Message):
     id = message.from_user.id
     if not await present_user(id):
         try:
             await add_user(id)
         except:
             pass
+    
     text = message.text
-    if len(text)>7:
+    if len(text) > 7:
         try:
             base64_string = text.split(" ", 1)[1]
         except:
@@ -47,7 +67,7 @@ async def start_command(client: Client, message: Message):
             except:
                 return
             if start <= end:
-                ids = range(start,end+1)
+                ids = range(start, end + 1)
             else:
                 ids = []
                 i = start
@@ -70,9 +90,9 @@ async def start_command(client: Client, message: Message):
         await temp_msg.delete()
 
         for msg in messages:
-
             if bool(CUSTOM_CAPTION) & bool(msg.document):
-                caption = CUSTOM_CAPTION.format(previouscaption = "" if not msg.caption else msg.caption.html, filename = msg.document.file_name)
+                caption = CUSTOM_CAPTION.format(previouscaption="" if not msg.caption else msg.caption.html,
+                                                filename=msg.document.file_name)
             else:
                 caption = "" if not msg.caption else msg.caption.html
 
@@ -82,11 +102,13 @@ async def start_command(client: Client, message: Message):
                 reply_markup = None
 
             try:
-                await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                await msg.copy(chat_id=message.from_user.id, caption=caption, parse_mode=ParseMode.HTML,
+                               reply_markup=reply_markup, protect_content=PROTECT_CONTENT)
                 await asyncio.sleep(0.5)
             except FloodWait as e:
                 await asyncio.sleep(e.x)
-                await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                await msg.copy(chat_id=message.from_user.id, caption=caption, parse_mode=ParseMode.HTML,
+                               reply_markup=reply_markup, protect_content=PROTECT_CONTENT)
             except:
                 pass
         return
@@ -94,24 +116,61 @@ async def start_command(client: Client, message: Message):
         reply_markup = InlineKeyboardMarkup(
             [
                 [
-                    InlineKeyboardButton("😊 About Me", callback_data = "about"),
-                    InlineKeyboardButton("🔒 Close", callback_data = "close")
+                    InlineKeyboardButton("😊 About Me", callback_data="about"),
+                    InlineKeyboardButton("🔒 Close", callback_data="close")
                 ]
             ]
         )
         await message.reply_text(
-            text = START_MSG.format(
-                first = message.from_user.first_name,
-                last = message.from_user.last_name,
-                username = None if not message.from_user.username else '@' + message.from_user.username,
-                mention = message.from_user.mention,
-                id = message.from_user.id
+            text=START_MSG.format(
+                first=message.from_user.first_name,
+                last=message.from_user.last_name,
+                username=None if not message.from_user.username else '@' + message.from_user.username,
+                mention=message.from_user.mention,
+                id=message.from_user.id
             ),
-            reply_markup = reply_markup,
-            disable_web_page_preview = True,
-            quote = True
+            reply_markup=reply_markup,
+            disable_web_page_preview=True,
+            quote=True
         )
         return
+
+
+# Your existing token-related functions...
+
+# Modify your command handler to include token verification
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
+async def start_command(client: Client, message: Message):
+    id = message.from_user.id
+    user_has_token = await verify_token(id, "")
+    
+    if not user_has_token:
+        # User doesn't have a valid token, generate a new one
+        new_token = await generate_token(id)
+        await message.reply_text(f"Here's your new token: {new_token}")
+        return
+    
+    text = message.text
+    if len(text) > 7:
+        try:
+            provided_token = text.split(" ", 1)[1]
+            # Verify the provided token
+            is_valid = await verify_token(id, provided_token)
+            if is_valid:
+                # Token is valid, execute the start command logic
+                await handle_start_command(client, message)
+            else:
+                # Token is invalid or expired, generate a new one and return
+                new_token = await generate_token(id)
+                await message.reply_text(f"Invalid or expired token. Here's a new token: {new_token}")
+                return
+        except IndexError:
+            return
+        except Exception as e:
+            print(e)  # Handle exceptions accordingly
+                
+
+
 
     
 #=====================================================================================##
