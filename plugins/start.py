@@ -69,8 +69,9 @@ async def generate_24h_token(user_id, tokens_collection):
 # 2. Create a Telegram Deep Link with the Token
 def create_telegram_deep_link(token):
     # Construct a deep link with the token parameter
-    deep_link = f"https://t.me/{client.username}?start={token}"
+    deep_link = f"https://t.me/blank_s_bot?start={token}"
     return deep_link
+    
 @Bot.on_message(filters.command('start') & filters.private)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
