@@ -119,7 +119,7 @@ async def check_command(client: Client, message: Message):
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
+        await message.reply(f"You haven't connected yet. Your new token: `.\n\nTo connect the token, use the command:\n`/connect v2 .")
         
 
 
@@ -149,9 +149,7 @@ async def stop_process_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     user_collection.delete_one({"user_id": user_id})
 
-# ... (rest of your existing code)
-# Inside the "start_command" function
-@Bot.on_message(filters.command('start') & filters.private & subscribed)
+
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
