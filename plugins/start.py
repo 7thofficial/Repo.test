@@ -186,12 +186,13 @@ async def start_command(client: Client, message: Message):
 # ... (Your existing code remains unchanged up to the function definitions)
 
 # Function to check the remaining time for a user's token
+
 async def check_token(client: Client, message: Message):
     id = message.from_user.id
     user_id = message.from_user.id
-    user_token = await tokens_collection.find_one({"user_id": id})
+    user_token = await tokens_collection.find_one({"user_id": id}, {"expiry_time": 1})
     
-    if user_token:
+    if user_token and "expiry_time" in user_token:
         remaining_time = user_token["expiry_time"] - datetime.now()
         remaining_hours = remaining_time.total_seconds() // 3600
         remaining_minutes = (remaining_time.total_seconds() % 3600) // 60
@@ -199,7 +200,7 @@ async def check_token(client: Client, message: Message):
         await message.reply_text(f"Your token is valid. Time remaining: {int(remaining_hours)} hours and {int(remaining_minutes)} minutes.")
     else:
         await message.reply_text("You don't have a valid token.")
-
+        
 # ... (Your other existing functions)
 
 @Bot.on_message(filters.command('check') & filters.private)
