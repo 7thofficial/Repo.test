@@ -54,12 +54,13 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
         logger.error(f"Request Exception: {e}")
     return None  # Return None if any error occurs
 
+# Function to generate a token for a user and store it in the database
 async def generate_token(user_id):
     token = secrets.token_hex(6)  # Generating a 6-digit hexadecimal token
-    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    
-    # Save the token and its expiration time in the database for the user
-    await tokens_collection.update_one(
+    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)  # Token expiration in 1 day
+
+    # Store the token and its expiration time in the database for the user
+    user_data.update_one(
         {"user_id": user_id},
         {"$set": {"token": token, "expiration_time": expiration_time}},
         upsert=True
@@ -122,12 +123,19 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
 
         
 
-async def is_valid_token(user_id):
-    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-    if stored_token_info:
-        expiration_time = stored_token_info.get("expiration_time")
-        return expiration_time and expiration_time > datetime.now()
-    return False
+#async def is_valid_token(user_id):
+#    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+  #  if stored_token_info:
+  #      expiration_time = stored_token_info.get("expiration_time")
+  #      return expiration_time and expiration_time > datetime.now()
+  #  return False
+
+async def is_valid_token(user_id, received_token):
+    user = users_data.find_one({"user_id": user_id})
+    stored_token = user.get("token") if user else None
+    return received_token == stored_token
+
+#
     
 async def reset_token_verification(user_id):
     # Your logic to reset the token verification process
@@ -160,24 +168,32 @@ async def start_command(client: Client, message: Message):
             await message.reply("There was an error generating the verification link. Please try again later.")
     else:
         if len(command) == 2 and command[1].startswith("token_"):
-            received_token = command[1]  # Extract the token from the start command
-            
+            received_token = command[1]
+            # Extract the token from the start command
+            if await is_valid_token(user_id, received_token):
+                await message.reply("Welcome! Your token is valid Access granted.")
+                await start_process(client, message)
+         
             # Check if the received token matches the stored token
-            stored_token = await get_stored_token(user_id)
-            if received_token == f"token_{stored_token}":
-                if await is_valid_token(user_id):
-                    print(f"User {user_id} accessed with a valid token: {received_token}")
-                    await message.reply("Welcome! Your token is valid. Access granted.")
-                    await start_process(client, message)
-                else:
-                    print(f"User {user_id} tried with an invalid token: {received_token}")
-                    await message.reply("Sorry, the token is invalid. Please generate a new one.")
-                    await message.reply("Please verify your token using /check.")
-            else:
-                # Stop the process as the tokens do not match
-                print(f"Tokens do not match for user {user_id}. Process stopped.")
-                await message.reply("Tokens do not match. Please connect your token to the bot using the provided link.")
-
+         #   stored_token = await get_stored_token(user_id)
+         #   if received_token == f"token_{stored_token}":
+           #     if await is_valid_token(user_id, received_token):
+              #      print(f"User {user_id} accessed with a valid token: {received_token}")
+             #       await message.reply("Welcome! Your token is valid. Access granted.")
+                    
+            else:   
+            
+            print(f"User {user_id} tried with an invalid token: {received_token}")
+                 await message.reply("Sorry, the token is invalid. Please generate a new one.")
+                 await message.reply("Please verify your token using /check.")
+        else:
+          # Generate a new token if the user doesn't have a valid one
+             token = await generate_token(user_id)
+        #
+               # Stop the process as the tokens do not match
+             print(f"Tokens do not match for user {user_id}. Process stopped.")
+             await message.reply("Tokens do not match. Please connect your token to the bot using the provided link.")
+             
 
 async def start_process(client: Client, message: Message):
     user_id = message.from_user.id
