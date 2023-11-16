@@ -21,12 +21,32 @@ dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
 tokens_collection = database["tokens"]
 user_data = database['users']
-
+SHORT_URL = "vnshortener.com"
+SHORT_API = "d20fd8cb82117442858d7f2acdb75648e865d2f9"
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+async def shorten_url_with_shareusio(url, short_url, short_api):
+    api_endpoint = f'http://{short_url}/api'  # Adding 'http://' as the schema
+    params = {'api': short_api, 'url': url}
+
+    try:
+        response = requests.get(api_endpoint, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if data["status"] == "success":
+                return data.get('shortenedUrl')  # Return shortened URL
+            else:
+                logger.error(f"Error: {data.get('message', 'Unknown error')}")
+        else:
+            logger.error(f"Error: Status Code - {response.status_code}")
+    except requests.RequestException as e:
+        logger.error(f"Request Exception: {e}")
+    return None  # Return None if any error occurs
+
 
 async def get_unused_token():
     # Your logic to get an unused token
@@ -40,7 +60,39 @@ async def user_has_valid_token(user_id):
         expiration_time = stored_token_info.get("expiration_time")
         return expiration_time and expiration_time > datetime.now()
     return False
+
+async def generate_and_send_new_token_with_link(client: Client, message: Message):
+    user_id = message.from_user.id
+    stored_token = await get_stored_token(user_id, tokens_collection)
     
+    if not stored_token:
+        # Generate a new token and save it
+        await generate_token(user_id, tokens_collection)
+        # Retrieve the newly generated token
+        stored_token = await get_stored_token(user_id, tokens_collection)
+        if not stored_token:
+            await message.reply_text("There was an error generating a new token. Please try again later.", quote=True)
+            return  # Exit the function without further processing
+
+    base64_string = await (f"token_{stored_token}")
+    base_url = f"https://t.me/{client.username}"
+    tokenized_url = f"{base_url}?start={base64_string}"
+    
+    short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
+    
+    if short_link:
+        await save_base64_string(user_id, base64_string, tokens_collection)
+        # Rest 
+        # Create an InlineKeyboardMarkup with a button leading to the shortened link
+        button = InlineKeyboardButton("Open Link", url=short_link)
+        keyboard = InlineKeyboardMarkup([[button]])
+        
+        # Send the message with the shortened link and the button
+        await message.reply_text("Here is your shortened link:", reply_markup=keyboard, disable_notification=True)
+    else:
+        await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
+        
+
 async def generate_token(user_id):
     token = secrets.token_hex(6)  # Generating a 6-digit hexadecimal token
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
@@ -90,8 +142,8 @@ async def get_stored_token(user_id):
     #        await message.reply(f"Please provide a token using /token `{token}`.")
 
 # Inside the "check_command" function
-@Bot.on_message(filters.command('start') & filters.private & subscribed)
-#@Bot.on_message(filters.command("check"))
+
+@Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
 
@@ -126,7 +178,6 @@ async def check_command(client: Client, message: Message):
         await message.reply(f"You haven't connected yet. Your new token: new_token.\n\nTo connect the token, use the command:\n`/connect v1 .")
         
 
-
 @Bot.on_message(filters.command("token"))
 async def token_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -153,7 +204,7 @@ async def stop_process_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     user_collection.delete_one({"user_id": user_id})
 
-
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
