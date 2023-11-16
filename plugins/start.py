@@ -132,7 +132,7 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
 
 async def is_valid_token(user_id, received_token):
     # Your logic to check if the received token matches the stored token
-    user = users_data.find_one({"user_id": user_id})
+    user = await user_data.find_one({"user_id": user_id})
     stored_token = user.get("token") if user else None
     return received_token == stored_token
     
