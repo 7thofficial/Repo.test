@@ -179,7 +179,7 @@ async def start_command(client: Client, message: Message):
                 await message.reply("Tokens do not match. Please connect your token to the bot using the provided link.")
 
 
-async def start_command_2(client: Client, message: Message):
+async def start_process(client: Client, message: Message):
     user_id = message.from_user.id
 
     # Check if the user has a valid token
