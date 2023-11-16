@@ -25,13 +25,15 @@ user_data = database['users']
 TOKEN_EXPIRATION_PERIOD = 86
 
 # Function to get unused tokens for a user
+
 async def get_unused_token(user_id):
-    user_token = await tokens_collection.find_one({"user_id": user_id})
+    user_token = await tokens_collection.find_one({"user_id": user_id}, {"expiry_time": 1})
     
-    if user_token and user_token["expiry_time"] > datetime.now():
-        return user_token["token"]
-    else:
-        return None
+    if user_token and "expiry_time" in user_token:
+        if user_token["expiry_time"] > datetime.now():
+            return user_token["token"]
+    return None
+    
         
 # Function to generate a token for a user
 async def generate_token(user_id):
@@ -186,6 +188,7 @@ async def start_command(client: Client, message: Message):
 # Function to check the remaining time for a user's token
 async def check_token(client: Client, message: Message):
     id = message.from_user.id
+    user_id = message.from_user.id
     user_token = await tokens_collection.find_one({"user_id": id})
     
     if user_token:
