@@ -130,12 +130,12 @@ async def get_stored_token(user_id):
 
 
 
-@Bot.on_message(filters.command('start') & filters.private & subscribed)
+@Bot.on_message(filters.command('start'))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
     command = message.text.split("_")
 
-    if not await present_user(user_id):
+    if not await is_valid_token(user_id):
         token = await generate_token(user_id)
         await add_user(user_id)
         print(f"Generated token for user {user_id}: {token}")
