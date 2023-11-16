@@ -146,6 +146,7 @@ async def handle_start_command(client: Client, message: Message):
         )
         return
 
+# Run the client
 # Modify your command handler to include token verification
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
@@ -167,9 +168,9 @@ async def start_command(client: Client, message: Message):
     text = message.text
     if len(text) > 7:
         try:
-            provided_token = text.split(" ", 1)[1]
+            provided_token = message.command[1].split('_', 1)[-1]
             # Verify the provided token
-            is_valid = await verify_token(id, provided_token)
+            is_valid = await verify_token(message.from_user.id, provided_token)
             if is_valid:
                 # Token is valid, execute the start command logic
                 await handle_start_command(client, message)
@@ -182,7 +183,9 @@ async def start_command(client: Client, message: Message):
             return
         except Exception as e:
             print(e)  # Handle exceptions accordingly
-           
+
+    else:
+        await message.reply_text("Please provide a token!")
 # ... (Your existing code remains unchanged up to the function definitions)
 
 # Function to check the remaining time for a user's token
