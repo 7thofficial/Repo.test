@@ -40,14 +40,26 @@ async def user_has_valid_token(user_id):
         expiration_time = stored_token_info.get("expiration_time")
         return expiration_time and expiration_time > datetime.now()
     return False
-
+    
 async def generate_token(user_id):
-    # Your logic to generate a unique token for a user
-    token = secrets.token_hex(6)
+    token = secrets.token_hex(6)  # Generating a 6-digit hexadecimal token
     expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
+    
+    # Save the token and its expiration time in the database for the user
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
     return token
 
+async def is_valid_token(user_id):
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        expiration_time = stored_token_info.get("expiration_time")
+        return expiration_time and expiration_time > datetime.now()
+    return False
+    
 async def reset_token_verification(user_id):
     # Your logic to reset the token verification process
     await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
@@ -72,12 +84,11 @@ async def start_command(client: Client, message: Message):
         await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
     else:
         # Check if the user has a valid token
-        if await user_has_valid_token(user_id):
+        if await is_valid_token(user_id):
             await message.reply("You have a valid token. Use /check to verify.")
         else:
             await message.reply(f"Please provide a token using /token `{token}`.")
-    return  # Fix: Remove extra else
-    
+
 # Inside the "check_command" function
 @Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
