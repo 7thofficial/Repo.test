@@ -128,6 +128,49 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
+@Bot.on_message(filters.command("check"))
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Check if the user is in the database
+    if await present_user(user_id):
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+            expiration_time = stored_token_info.get("expiration_time")
+            stored_token = stored_token_info.get("token")
+
+            if expiration_time and expiration_time > datetime.now():
+                remaining_time = expiration_time - datetime.now()
+                user = message.from_user
+                username = f"@{user.username}" if user.username else "not set"
+                await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
+                # Trigger start_command function as the token is valid
+                await start_command(client, message)
+                
+            else:
+                # Generate a new token for the user
+                new_token = await generate_token(user_id)
+                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nPlease verify your token [here](https://t.me/{client.username}?start=token_{new_token}).")
+                # Shorten the deep link for token verification
+                shortened_link = await shorten_url_with_shareusio(f"https://t.me/{client.username}?start=token_{new_token}", SHORT_URL, SHORT_API)
+                if shortened_link:
+                    await message.reply(f"Here is the shortened link for easy access: {shortened_link}")
+        else:
+            new_token = await generate_token(user_id)
+            base_url = f"https://t.me/{client.username}"
+            tokenized_url = f"{base_url}?start=token_{new_token}"
+            short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
+            if short_link:
+                await message.reply(f"You don't have a valid token. Here is your new token: v4 \nUse this link to connect with your token: {short_link}")
+            else:
+                await message.reply("There was an error generating the shortened link. Please try again later.", quote=True)
+    else:
+        new_token = await generate_token(user_id)
+        await add_user(user_id)
+        await message.reply(f"You haven't connected yet. Your new token: v6 \nUse this link to connect with your token: {short_link}")
+
+
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
