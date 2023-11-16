@@ -66,6 +66,16 @@ async def generate_token(user_id):
     )
     return token
 
+async def add_user(user_id):
+    user = await user_data.find_one({'_id': user_id})
+    if user:
+        # Handle the case where the user already exists (possibly update some information)
+        # You can add logic here to update user information if needed
+        pass
+    else:
+        # If the user doesn't exist, insert them into the database
+        await user_data.insert_one({'_id': user_id})
+
 
 async def get_unused_token():
     # Your logic to get an unused token
