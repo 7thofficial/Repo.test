@@ -193,7 +193,7 @@ async def start_command(client: Client, message: Message):
         except Exception as e:
             print(e)  # Handle exceptions accordingly
     else:
-        await message.reply_text("Please provide a
+        await message.reply_text("Please provide a v1 ")
 
 # ... (Your existing code remains unchanged up to the function definitions)
 
