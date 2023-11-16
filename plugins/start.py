@@ -1,19 +1,26 @@
 import os
 import asyncio
+import base64
+import logging
+import secrets
+from datetime import datetime, timedelta
+
+import aiohttp
+import requests
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
-import random
+from motor import motor_asyncio
+
 from bot import Bot
-from config import DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+from config import (
+    DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+)
 from helper_func import subscribed, encode, decode, get_messages
 from database.database import add_user, del_user, full_userbase, present_user
-import logging
-from datetime import datetime, timedelta
-import secrets
-import pymongo
-from motor import motor_asyncio
+
+
 
 
 # Use motor for asynchronous MongoDB operations
@@ -46,6 +53,18 @@ async def shorten_url_with_shareusio(url, short_url, short_api):
     except requests.RequestException as e:
         logger.error(f"Request Exception: {e}")
     return None  # Return None if any error occurs
+
+async def generate_token(user_id):
+    token = secrets.token_hex(6)  # Generating a 6-digit hexadecimal token
+    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
+    
+    # Save the token and its expiration time in the database for the user
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+    return token
 
 
 async def get_unused_token():
@@ -82,7 +101,6 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
     
     if short_link:
         await save_base64_string(user_id, base64_string, tokens_collection)
-        # Rest 
         # Create an InlineKeyboardMarkup with a button leading to the shortened link
         button = InlineKeyboardButton("Open Link", url=short_link)
         keyboard = InlineKeyboardMarkup([[button]])
@@ -91,19 +109,8 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
         await message.reply_text("Here is your shortened link:", reply_markup=keyboard, disable_notification=True)
     else:
         await message.reply_text("There was an error generating the shortened link. Please try again later.", quote=True)
-        
 
-async def generate_token(user_id):
-    token = secrets.token_hex(6)  # Generating a 6-digit hexadecimal token
-    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
-    
-    # Save the token and its expiration time in the database for the user
-    await tokens_collection.update_one(
-        {"user_id": user_id},
-        {"$set": {"token": token, "expiration_time": expiration_time}},
-        upsert=True
-    )
-    return token
+        
 
 async def is_valid_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
