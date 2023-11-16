@@ -90,7 +90,8 @@ async def start_command(client: Client, message: Message):
             await message.reply(f"Please provide a token using /token `{token}`.")
 
 # Inside the "check_command" function
-@Bot.on_message(filters.command("check"))
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
+#@Bot.on_message(filters.command("check"))
 async def check_command(client: Client, message: Message):
     user_id = message.from_user.id
 
@@ -113,16 +114,16 @@ async def check_command(client: Client, message: Message):
             else:
                 # Generate a new token for the user
                 new_token = await generate_token(user_id)
-                await message.reply(f"You don't have a valid token. Your new token: new_token}`.\n\nTo connect the new token, use the command:\n`/connect v3 new_token}`.")
+                await message.reply(f"You don't have a valid token. Your new token: new_toke .\n\nTo connect the new token, use the command:\n`/connect v3 new_token.")
         else:
             # Generate a new token for the user
             new_token = await generate_token(user_id)
-            await message.reply(f"You don't have a valid token. Your new token: new_token}.\n\nTo connect the new token, use the command:\n`/connect v2 new_token}`.")
+            await message.reply(f"You don't have a valid token. Your new token: new_token.\n\nTo connect the new token, use the command:\n`/connect v2 new_token.")
     else:
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: `.\n\nTo connect the token, use the command:\n`/connect v1 .")
+        await message.reply(f"You haven't connected yet. Your new token: new_token.\n\nTo connect the token, use the command:\n`/connect v1 .")
         
 
 
