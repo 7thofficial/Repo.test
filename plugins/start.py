@@ -146,7 +146,9 @@ async def handle_start_command(client: Client, message: Message):
         )
         return
 
-# Run the client
+    # User has a token; check if it's valid
+
+        
 # Modify your command handler to include token verification
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
@@ -154,38 +156,45 @@ async def start_command(client: Client, message: Message):
     user_has_token = await verify_token(id, "")
     
     if not user_has_token:
-        # Check if a token was previously generated but not used
         unused_token = await get_unused_token(id)
         if unused_token:
             await message.reply_text(f"Here's your unused token: {unused_token}")
             return
         else:
-            # Generate a new token for the user
             new_token = await generate_token(id)
             await message.reply_text(f"Here's your new token: {new_token}")
-            return
+            return 
+    
+    user_token = await tokens_collection.find_one({"user_id": id})
+    if user_token["expiry_time"] > datetime.now():
+        await handle_start_command(client, message)
+    else:
+        new_token = await generate_token(id)
+        await message.reply_text(f"Your token is expired. Here's your new token: {new_token}")
+        return
     
     text = message.text
     if len(text) > 7:
         try:
             provided_token = message.command[1].split('_', 1)[-1]
-            # Verify the provided token
             is_valid = await verify_token(message.from_user.id, provided_token)
             if is_valid:
-                # Token is valid, execute the start command logic
                 await handle_start_command(client, message)
             else:
-                # Token is invalid or expired, return a new token
-                new_token = await generate_token(id)
-                await message.reply_text(f"Invalid or expired token. Here's a new token: {new_token}")
-                return
+                user_token = await tokens_collection.find_one({"user_id": id})
+                if user_token["expiry_time"] > datetime.now():
+                    await handle_start_command(client, message)
+                else:
+                    new_token = await generate_token(id)
+                    await message.reply_text(f"Your token is expired. Here's your new token: {new_token}")
+                    return
         except IndexError:
             return
         except Exception as e:
             print(e)  # Handle exceptions accordingly
-
     else:
-        await message.reply_text("Please provide a token!")
+        await message.reply_text("Please provide a
+
 # ... (Your existing code remains unchanged up to the function definitions)
 
 # Function to check the remaining time for a user's token
