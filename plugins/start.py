@@ -131,10 +131,28 @@ async def generate_and_send_new_token_with_link(client: Client, message: Message
   #  return False
 
 async def is_valid_token(user_id, received_token):
-    # Your logic to check if the received token matches the stored token
-    user = await user_data.find_one({"user_id": user_id})
-    stored_token = user.get("token") if user else None
-    return received_token == stored_token
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        stored_token = stored_token_info.get("token")
+        expiration_time = stored_token_info.get("expiration_time")
+        
+        if expiration_time and expiration_time > datetime.now():
+            # Check if the received token matches the stored token
+            if received_token == stored_token:
+                print(f"Received Token: {received_token}")
+                print(f"Stored Token: {stored_token}")
+                print("Token Matched!")
+                return True
+            else:
+                print(f"Received Token: {received_token}")
+                print(f"Stored Token: {stored_token}")
+                print("Tokens Do Not Match!")
+        else:
+            print("Token Expired!")
+    else:
+        print("No Token Found for User!")
+    return False
+
     
     
 async def reset_token_verification(user_id):
