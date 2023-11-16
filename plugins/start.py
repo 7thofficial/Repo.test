@@ -107,6 +107,9 @@ async def check_command(client: Client, message: Message):
                 user = message.from_user
                 username = f"@{user.username}" if user.username else "not set"
                 await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
+                # Trigger start_command function as the token is valid
+                await start_command(client, message)
+                
             else:
                 # Generate a new token for the user
                 new_token = await generate_token(user_id)
