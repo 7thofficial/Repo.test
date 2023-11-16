@@ -153,7 +153,7 @@ async def start_command(client: Client, message: Message):
     command = message.text.split("_")
 
     if len(command) == 2 and command[1].startswith("token_"):
-        received_token = command[1]
+        received_token = command[1][6:]
         if await is_valid_token(user_id, received_token):
             await message.reply("Welcome! Your token is valid. Access granted.")
             await start_process(client, message)
