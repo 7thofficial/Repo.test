@@ -110,16 +110,16 @@ async def check_command(client: Client, message: Message):
             else:
                 # Generate a new token for the user
                 new_token = await generate_token(user_id)
-                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
+                await message.reply(f"You don't have a valid token. Your new token: new_token}`.\n\nTo connect the new token, use the command:\n`/connect v3 new_token}`.")
         else:
             # Generate a new token for the user
             new_token = await generate_token(user_id)
-            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
+            await message.reply(f"You don't have a valid token. Your new token: new_token}.\n\nTo connect the new token, use the command:\n`/connect v2 new_token}`.")
     else:
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: `.\n\nTo connect the token, use the command:\n`/connect v2 .")
+        await message.reply(f"You haven't connected yet. Your new token: `.\n\nTo connect the token, use the command:\n`/connect v1 .")
         
 
 
