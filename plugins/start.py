@@ -148,7 +148,6 @@ async def get_stored_token(user_id):
 
 
 @Bot.on_message(filters.command('start'))
-@Bot.on_message(filters.command('start'))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
     command = message.text.split("_")
