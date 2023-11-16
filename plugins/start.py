@@ -128,98 +128,6 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
-# ... (rest of your existing code)
-
-# Inside the "start_command" function
-#@Bot.on_message(filters.command("start"))
-#async def start_command(client: Client, message: Message):
-#    user_id = message.from_user.id
-
-    # Check if the user is already in the database
- #   if not await present_user(user_id):
-        # Generate a new token for the user
- #       token = await generate_token(user_id)
- #       await add_user(user_id)
- #       await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
-  #  else:
-        # Check if the user has a valid token
-   #     if await is_valid_token(user_id):
-    #        await message.reply("You have a valid token. Use /check to verify.")
-  #      else:
-    #        await message.reply(f"Please provide a token using /token `{token}`.")
-
-# Inside the "check_command" function
-
-@Bot.on_message(filters.command("check"))
-async def check_command(client: Client, message: Message):
-    user_id = message.from_user.id
-
-    # Check if the user is in the database
-    if await present_user(user_id):
-        # Check if the user has a valid token
-        if await user_has_valid_token(user_id):
-            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
-            expiration_time = stored_token_info.get("expiration_time")
-            stored_token = stored_token_info.get("token")
-
-            if expiration_time and expiration_time > datetime.now():
-                remaining_time = expiration_time - datetime.now()
-                user = message.from_user
-                username = f"@{user.username}" if user.username else "not set"
-                await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
-                # Trigger start_command function as the token is valid
-                await start_command(client, message)
-                
-            else:
-                # Generate a new token for the user
-                new_token = await generate_token(user_id)
-                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nPlease verify your token [here](https://t.me/{client.username}?start=token_{new_token}).")
-                # Shorten the deep link for token verification
-                shortened_link = await shorten_url_with_shareusio(f"https://t.me/{client.username}?start=token_{new_token}", SHORT_URL, SHORT_API)
-                if shortened_link:
-                    await message.reply(f"Here is the shortened link for easy access: {shortened_link}")
-        #else:
-        else:
-            new_token = await generate_token(user_id)
-            base_url = f"https://t.me/{client.username}"
-            tokenized_url = f"{base_url}?start=token_{new_token}"
-            short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
-            if short_link:
-                await message.reply(f"You don't have a valid token. Here is your new token: v4 \nUse this link to connect with your token: {short_link}")
-            else:
-                await message.reply("There was an error generating the shortened link. Please try again later.", quote=True)
-    else:
-        new_token = await generate_token(user_id)
-        await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: v6 \nUse this link to connect with your token: {short_link}")
-            
-
-@Bot.on_message(filters.command("token"))
-async def token_command(client: Client, message: Message):
-    user_id = message.from_user.id
-    user_token = message.command[1] if len(message.command) > 1 else None
-
-    # Check if the provided token is valid
-    if await user_has_valid_token(user_id):
-        await message.reply("You have already provided a valid token. Use /check to verify.")
-    elif user_token:
-        # Check if the provided token is valid
-        token_entry = token_collection.find_one({"token": user_token, "user_id": {"$exists": False}})
-        if token_entry:
-            token_collection.update_one({"_id": token_entry["_id"]}, {"$set": {"user_id": user_id}})
-            user_collection.insert_one({"user_id": user_id, "token": user_token})
-            await message.reply("Token accepted! Use /check to verify.")
-        else:
-            await message.reply("Invalid token. Please try again.")
-    else:
-        await message.reply("Please provide a token using /token {your_token}.")
-
-@Bot.on_callback_query(filters.regex("^stop_process$"))
-async def stop_process_callback(client: Client, query: CallbackQuery):
-    await query.answer("Token verification process stopped. Use /start to restart.")
-    user_id = query.from_user.id
-    user_collection.delete_one({"user_id": user_id})
-
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -265,24 +173,6 @@ async def start_command(client: Client, message: Message):
                 await message.reply("Please verify your token using /check.")
 
 
-# Assuming 'Bot' is your Pyrogram client instance
-
-#@Bot.on_message(filters.command('start') & filters.private & subscribed)
-#async def start_command(client: Client, message: Message):
-#    user_id = message.from_user.id
- #   command = message.text.split("_")
-
-    
-        # Check the validity of the received token (add your validation logic here)
-        # For example, you can check the token in your database or perform any required validation
-        
-        #if validate_token(received_token):
-            # If the token is valid, perform actions or grant access
-       #     print(f"User {user_id} accessed with a valid token: {received_token}")
-     #       await message.reply("Welcome! Your token is valid. Access granted.")
-      #  else:
-            # If the token is invalid, prompt the user to generate a new one or take necessary actions
-            
 
 async def start_command_2(client: Client, message: Message):
     user_id = message.from_user.id
