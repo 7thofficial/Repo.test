@@ -152,9 +152,18 @@ async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
     command = message.text.split("_")
 
-    if not await is_valid_token(user_id):
+    if len(command) == 2 and command[1].startswith("token_"):
+        received_token = command[1]
+        if await is_valid_token(user_id, received_token):
+            await message.reply("Welcome! Your token is valid. Access granted.")
+            await start_process(client, message)
+        else:
+            print(f"User {user_id} tried with an invalid token: {received_token}")
+            await message.reply("Sorry, the token is invalid. Please generate a new one.")
+            await message.reply("Please verify your token using /check.")
+    else:
+        # Generate a new token if the user doesn't have a valid one
         token = await generate_token(user_id)
-        await add_user(user_id)
         print(f"Generated token for user {user_id}: {token}")
         
         base_url = f"https://t.me/{client.username}"
@@ -166,24 +175,7 @@ async def start_command(client: Client, message: Message):
             await message.reply(f"Welcome! Your token has been generated. Use this link to verify: {short_link}")
         else:
             await message.reply("There was an error generating the verification link. Please try again later.")
-    else:
-        if len(command) == 2 and command[1].startswith("token_"):
-            received_token = command[1]
-            # Extract the token from the start command
-            if await is_valid_token(user_id, received_token):
-                await message.reply("Welcome! Your token is valid Access granted.")
-                await start_process(client, message)
-            else:
-                print(f"User {user_id} tried with an invalid token: {received_token}")
-                await message.reply("Sorry, the token is invalid. Please generate a new one.")
-                await message.reply("Please verify your token using /check.")
-        else:
-            # Generate a new token if the user doesn't have a valid one
-            token = await generate_token(user_id)
-            # Stop the process as the tokens do not match
-            print(f"Tokens do not match for user {user_id}. Process stopped.")
-            await message.reply("Tokens do not match. Please connect your token to the bot using the provided link.")
-
+            
 
 async def start_process(client: Client, message: Message):
     user_id = message.from_user.id
