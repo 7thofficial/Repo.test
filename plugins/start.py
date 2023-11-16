@@ -72,22 +72,22 @@ async def get_stored_token(user_id):
 # ... (rest of your existing code)
 
 # Inside the "start_command" function
-@Bot.on_message(filters.command("start"))
-async def start_command(client: Client, message: Message):
-    user_id = message.from_user.id
+#@Bot.on_message(filters.command("start"))
+#async def start_command(client: Client, message: Message):
+#    user_id = message.from_user.id
 
     # Check if the user is already in the database
-    if not await present_user(user_id):
+ #   if not await present_user(user_id):
         # Generate a new token for the user
-        token = await generate_token(user_id)
-        await add_user(user_id)
-        await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
-    else:
+ #       token = await generate_token(user_id)
+ #       await add_user(user_id)
+ #       await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
+  #  else:
         # Check if the user has a valid token
-        if await is_valid_token(user_id):
-            await message.reply("You have a valid token. Use /check to verify.")
-        else:
-            await message.reply(f"Please provide a token using /token `{token}`.")
+   #     if await is_valid_token(user_id):
+    #        await message.reply("You have a valid token. Use /check to verify.")
+  #      else:
+    #        await message.reply(f"Please provide a token using /token `{token}`.")
 
 # Inside the "check_command" function
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
