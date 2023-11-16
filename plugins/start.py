@@ -223,6 +223,69 @@ async def stop_process_callback(client: Client, query: CallbackQuery):
 @Bot.on_message(filters.command('start') & filters.private & subscribed)
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
+    command = message.text.split("_")
+
+    # Check if the user is already in the database
+    if not await present_user(user_id):
+        # Generate a new token for the user
+        token = await generate_token(user_id)
+        await add_user(user_id)
+        
+        # Log the token in the console
+        print(f"Generated token for user {user_id}: {token}")
+        
+        # Generate the deep link with the token embedded
+        base_url = f"https://t.me/{client.username}"
+        tokenized_url = f"{base_url}?start=token_{token}"
+        
+        # Shorten the deep link
+        short_link = await shorten_url_with_shareusio(tokenized_url, SHORT_URL, SHORT_API)
+        
+        if short_link:
+            await message.reply(f"Welcome! Your token has been generated. Use this link to verify: {short_link}")
+        else:
+            await message.reply("There was an error generating the verification link. Please try again later.")
+    else:
+        if len(command) == 2 and command[1].startswith("token_"):
+            received_token = command[1]  # Extract the token from the start command
+
+            # Check if the user has a valid token
+            if await is_valid_token(user_id):
+                print(f"User {user_id} accessed with a valid token: {received_token}")
+                await message.reply("Welcome! Your token is valid. Access granted.")
+           
+                # Here, you can add logic to handle the case when the token is valid
+                # For example:
+                # Perform actions or grant access if the token is valid
+                await start_command_2(client, message)
+            else:
+                print(f"User {user_id} tried with an invalid token: {received_token}")
+                await message.reply("Sorry, the token is invalid. Please generate a new one.")
+                # If the token is not valid, prompt the user to verify the token
+                await message.reply("Please verify your token using /check.")
+
+
+# Assuming 'Bot' is your Pyrogram client instance
+
+#@Bot.on_message(filters.command('start') & filters.private & subscribed)
+#async def start_command(client: Client, message: Message):
+#    user_id = message.from_user.id
+ #   command = message.text.split("_")
+
+    
+        # Check the validity of the received token (add your validation logic here)
+        # For example, you can check the token in your database or perform any required validation
+        
+        #if validate_token(received_token):
+            # If the token is valid, perform actions or grant access
+       #     print(f"User {user_id} accessed with a valid token: {received_token}")
+     #       await message.reply("Welcome! Your token is valid. Access granted.")
+      #  else:
+            # If the token is invalid, prompt the user to generate a new one or take necessary actions
+            
+
+async def start_command_2(client: Client, message: Message):
+    user_id = message.from_user.id
 
     # Check if the user has a valid token
     if not await user_has_valid_token(user_id):
