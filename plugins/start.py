@@ -15,6 +15,7 @@ import secrets
 import pymongo
 from motor import motor_asyncio
 
+
 # Use motor for asynchronous MongoDB operations
 dbclient = motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
@@ -24,45 +25,137 @@ user_data = database['users']
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
 
-# Function to get unused tokens for a user
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-async def get_unused_token(user_id):
-    user_token = await tokens_collection.find_one({"user_id": user_id}, {"expiry_time": 1})
-    
-    if user_token and "expiry_time" in user_token:
-        if user_token["expiry_time"] > datetime.now():
-            return user_token["token"]
-    return None
-    
-        
-# Function to generate a token for a user
+async def get_unused_token():
+    # Your logic to get an unused token
+    unused_token = await tokens_collection.find_one({"user_id": {"$exists": False}})
+    return unused_token
+
+async def user_has_valid_token(user_id):
+    # Your logic to check if the user has a valid token
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    if stored_token_info:
+        expiration_time = stored_token_info.get("expiration_time")
+        return expiration_time and expiration_time > datetime.now()
+    return False
+
 async def generate_token(user_id):
-    token = secrets.token_hex(16)  # Generate a random token
-    expiry_time = datetime.now() + timedelta(hours=24)  # Set the token expiration time (24 hours)
-    
-    # Save the token and its expiration time in the database for the user
-    await tokens_collection.insert_one({"user_id": user_id, "token": token, "expiry_time": expiry_time})
+    # Your logic to generate a unique token for a user
+    token = secrets.token_hex(16)
+    expiration_time = datetime.now() + timedelta(seconds=TOKEN_EXPIRATION_PERIOD)
+    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"token": token, "expiration_time": expiration_time}}, upsert=True)
     return token
 
-# Function to check if a token is valid for a user
-async def verify_token(user_id, provided_token):
-    user_token = await tokens_collection.find_one({"user_id": user_id})
-    
-    if user_token and user_token["token"] == provided_token and user_token["expiry_time"] > datetime.now():
-        return True  # Token is valid
+async def reset_token_verification(user_id):
+    # Your logic to reset the token verification process
+    await tokens_collection.update_one({"user_id": user_id}, {"$set": {"expiration_time": None}})
+
+async def get_stored_token(user_id):
+    # Your logic to retrieve stored token from MongoDB
+    stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+    return stored_token_info["token"] if stored_token_info else None
+
+# ... (rest of your existing code)
+
+# Inside the "start_command" function
+@Bot.on_message(filters.command("start"))
+async def start_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Check if the user is already in the database
+    if not await present_user(user_id):
+        # Generate a new token for the user
+        token = await generate_token(user_id)
+        await add_user(user_id)
+        await message.reply(f"Welcome! Your token is: `{token}` Use /check to verify.")
     else:
-        return False  # Token is invalid or expired
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            await message.reply("You have a valid token. Use /check to verify.")
+        else:
+            await message.reply(f"Please provide a token using /token `{token}`.")
+    return  # Fix: Remove extra else
+    
+# Inside the "check_command" function
+@Bot.on_message(filters.command("check"))
+async def check_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Check if the user is in the database
+    if await present_user(user_id):
+        # Check if the user has a valid token
+        if await user_has_valid_token(user_id):
+            stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+            expiration_time = stored_token_info.get("expiration_time")
+            stored_token = stored_token_info.get("token")
+
+            if expiration_time and expiration_time > datetime.now():
+                remaining_time = expiration_time - datetime.now()
+                user = message.from_user
+                username = f"@{user.username}" if user.username else "not set"
+                await message.reply(f"Your token: `{stored_token}` is valid. Use it to access the features.\n\nUser Details:\n- ID: {user.id}\n- First Name: {user.first_name}\n- Last Name: {user.last_name}\n- Username: {username}\n\nToken Expiration Time: {remaining_time}")
+            else:
+                # Generate a new token for the user
+                new_token = await generate_token(user_id)
+                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
+        else:
+            # Generate a new token for the user
+            new_token = await generate_token(user_id)
+            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nTo connect the new token, use the command:\n`/connect {new_token}`.")
+    else:
+        # Generate a new token for the user
+        new_token = await generate_token(user_id)
+        await add_user(user_id)
+        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`.\n\nTo connect the token, use the command:\n`/connect {new_token}`.")
+        
 
 
-# Function to handle the start command logic
-async def handle_start_command(client: Client, message: Message):
-    id = message.from_user.id
-    if not await present_user(id):
+@Bot.on_message(filters.command("token"))
+async def token_command(client: Client, message: Message):
+    user_id = message.from_user.id
+    user_token = message.command[1] if len(message.command) > 1 else None
+
+    # Check if the provided token is valid
+    if await user_has_valid_token(user_id):
+        await message.reply("You have already provided a valid token. Use /check to verify.")
+    elif user_token:
+        # Check if the provided token is valid
+        token_entry = token_collection.find_one({"token": user_token, "user_id": {"$exists": False}})
+        if token_entry:
+            token_collection.update_one({"_id": token_entry["_id"]}, {"$set": {"user_id": user_id}})
+            user_collection.insert_one({"user_id": user_id, "token": user_token})
+            await message.reply("Token accepted! Use /check to verify.")
+        else:
+            await message.reply("Invalid token. Please try again.")
+    else:
+        await message.reply("Please provide a token using /token {your_token}.")
+
+@Bot.on_callback_query(filters.regex("^stop_process$"))
+async def stop_process_callback(client: Client, query: CallbackQuery):
+    await query.answer("Token verification process stopped. Use /start to restart.")
+    user_id = query.from_user.id
+    user_collection.delete_one({"user_id": user_id})
+
+# ... (rest of your existing code)
+# Inside the "start_command" function
+@Bot.on_message(filters.command('start') & filters.private & subscribed)
+async def start_command(client: Client, message: Message):
+    user_id = message.from_user.id
+
+    # Check if the user has a valid token
+    if not await user_has_valid_token(user_id):
+        await message.reply_text("Please provide a valid token using /token {your_token}.")
+        return  # Stop the process if the token is not valid
+
+    # Continue with the existing logic if the token is valid
+    if not await present_user(user_id):
         try:
-            await add_user(id)
+            await add_user(user_id)
         except:
             pass
-    
+
     text = message.text
     if len(text) > 7:
         try:
@@ -102,8 +195,10 @@ async def handle_start_command(client: Client, message: Message):
 
         for msg in messages:
             if bool(CUSTOM_CAPTION) & bool(msg.document):
-                caption = CUSTOM_CAPTION.format(previouscaption="" if not msg.caption else msg.caption.html,
-                                                filename=msg.document.file_name)
+                caption = CUSTOM_CAPTION.format(
+                    previouscaption="" if not msg.caption else msg.caption.html,
+                    filename=msg.document.file_name
+                )
             else:
                 caption = "" if not msg.caption else msg.caption.html
 
@@ -113,13 +208,23 @@ async def handle_start_command(client: Client, message: Message):
                 reply_markup = None
 
             try:
-                await msg.copy(chat_id=message.from_user.id, caption=caption, parse_mode=ParseMode.HTML,
-                               reply_markup=reply_markup, protect_content=PROTECT_CONTENT)
+                await msg.copy(
+                    chat_id=message.from_user.id,
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=reply_markup,
+                    protect_content=PROTECT_CONTENT
+                )
                 await asyncio.sleep(0.5)
             except FloodWait as e:
                 await asyncio.sleep(e.x)
-                await msg.copy(chat_id=message.from_user.id, caption=caption, parse_mode=ParseMode.HTML,
-                               reply_markup=reply_markup, protect_content=PROTECT_CONTENT)
+                await msg.copy(
+                    chat_id=message.from_user.id,
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=reply_markup,
+                    protect_content=PROTECT_CONTENT
+                )
             except:
                 pass
         return
@@ -128,7 +233,10 @@ async def handle_start_command(client: Client, message: Message):
             [
                 [
                     InlineKeyboardButton("😊 About Me", callback_data="about"),
-                    InlineKeyboardButton("🔒 Close", callback_data="close")
+                    InlineKeyboardButton("🔒 unlock", url="https://shrs.link/FUmxXe")
+                ],
+                [
+                    InlineKeyboardButton("Stop Process", callback_data="stop_process")
                 ]
             ]
         )
@@ -145,81 +253,7 @@ async def handle_start_command(client: Client, message: Message):
             quote=True
         )
         return
-
-    # User has a token; check if it's valid
-
         
-# Modify your command handler to include token verification
-@Bot.on_message(filters.command('start') & filters.private & subscribed)
-async def start_command(client: Client, message: Message):
-    id = message.from_user.id
-    user_has_token = await verify_token(id, "")
-    
-    if not user_has_token:
-        unused_token = await get_unused_token(id)
-        if unused_token:
-            await message.reply_text(f"Here's your unused token: {unused_token}")
-            return
-        else:
-            new_token = await generate_token(id)
-            await message.reply_text(f"Here's your new token: {new_token}")
-            return 
-    
-    user_token = await tokens_collection.find_one({"user_id": id})
-    if user_token["expiry_time"] > datetime.now():
-        await handle_start_command(client, message)
-    else:
-        new_token = await generate_token(id)
-        await message.reply_text(f"Your token is expired. Here's your new token: {new_token}")
-        return
-    
-    text = message.text
-    if len(text) > 7:
-        try:
-            provided_token = message.command[1].split('_', 1)[-1]
-            is_valid = await verify_token(message.from_user.id, provided_token)
-            if is_valid:
-                await handle_start_command(client, message)
-            else:
-                user_token = await tokens_collection.find_one({"user_id": id})
-                if user_token["expiry_time"] > datetime.now():
-                    await handle_start_command(client, message)
-                else:
-                    new_token = await generate_token(id)
-                    await message.reply_text(f"Your token is expired. Here's your new token: {new_token}")
-                    return
-        except IndexError:
-            return
-        except Exception as e:
-            print(e)  # Handle exceptions accordingly
-    else:
-        await message.reply_text("Please provide a v1 ")
-
-# ... (Your existing code remains unchanged up to the function definitions)
-
-# Function to check the remaining time for a user's token
-
-async def check_token(client: Client, message: Message):
-    id = message.from_user.id
-    user_id = message.from_user.id
-    user_token = await tokens_collection.find_one({"user_id": id}, {"expiry_time": 1})
-    
-    if user_token and "expiry_time" in user_token:
-        remaining_time = user_token["expiry_time"] - datetime.now()
-        remaining_hours = remaining_time.total_seconds() // 3600
-        remaining_minutes = (remaining_time.total_seconds() % 3600) // 60
-        
-        await message.reply_text(f"Your token is valid. Time remaining: {int(remaining_hours)} hours and {int(remaining_minutes)} minutes.")
-    else:
-        await message.reply_text("You don't have a valid token.")
-        
-# ... (Your other existing functions)
-
-@Bot.on_message(filters.command('check') & filters.private)
-async def check_command(client: Client, message: Message):
-    await check_token(client, message)
-
-# ... (Your remaining code)
 
 
     
@@ -318,3 +352,4 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
         msg = await message.reply(REPLY_ERROR)
         await asyncio.sleep(8)
         await msg.delete()
+
