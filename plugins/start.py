@@ -139,7 +139,6 @@ async def get_stored_token(user_id):
     return stored_token_info["token"] if stored_token_info else None
 
 
-
 @Bot.on_message(filters.command('start'))
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
@@ -169,7 +168,7 @@ async def start_command(client: Client, message: Message):
                 if await is_valid_token(user_id):
                     print(f"User {user_id} accessed with a valid token: {received_token}")
                     await message.reply("Welcome! Your token is valid. Access granted.")
-                    await start_command_2(client, message)
+                    await start_process(client, message)
                 else:
                     print(f"User {user_id} tried with an invalid token: {received_token}")
                     await message.reply("Sorry, the token is invalid. Please generate a new one.")
@@ -178,8 +177,6 @@ async def start_command(client: Client, message: Message):
                 # Stop the process as the tokens do not match
                 print(f"Tokens do not match for user {user_id}. Process stopped.")
                 await message.reply("Tokens do not match. Please connect your token to the bot using the provided link.")
-
-
 
 
 async def start_command_2(client: Client, message: Message):
