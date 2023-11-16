@@ -173,17 +173,29 @@ async def check_command(client: Client, message: Message):
             else:
                 # Generate a new token for the user
                 new_token = await generate_token(user_id)
-                await message.reply(f"You don't have a valid token. Your new token: new_toke .\n\nTo connect the new token, use the command:\n`/connect v3 new_token.")
+                await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nPlease verify your token [here](https://t.me/{client.username}?start=token_{new_token}).")
+                # Shorten the deep link for token verification
+                shortened_link = await shorten_url_with_shareusio(f"https://t.me/{client.username}?start=token_{new_token}", SHORT_URL, SHORT_API)
+                if shortened_link:
+                    await message.reply(f"Here is the shortened link for easy access: {shortened_link}")
         else:
             # Generate a new token for the user
             new_token = await generate_token(user_id)
-            await message.reply(f"You don't have a valid token. Your new token: new_token.\n\nTo connect the new token, use the command:\n`/connect v2 new_token.")
+            await message.reply(f"You don't have a valid token. Your new token: `{new_token}`.\n\nPlease verify your token [here](https://t.me/{client.username}?start=token_{new_token}).")
+            # Shorten the deep link for token verification
+            shortened_link = await shorten_url_with_shareusio(f"https://t.me/{client.username}?start=token_{new_token}", SHORT_URL, SHORT_API)
+            if shortened_link:
+                await message.reply(f"Here is the shortened link for easy access: {shortened_link}")
     else:
         # Generate a new token for the user
         new_token = await generate_token(user_id)
         await add_user(user_id)
-        await message.reply(f"You haven't connected yet. Your new token: new_token.\n\nTo connect the token, use the command:\n`/connect v1 .")
-        
+        await message.reply(f"You haven't connected yet. Your new token: `{new_token}`.\n\nPlease verify your token [here](https://t.me/{client.username}?start=token_{new_token}).")
+        # Shorten the deep link for token verification
+        shortened_link = await shorten_url_with_shareusio(f"https://t.me/{client.username}?start=token_{new_token}", SHORT_URL, SHORT_API)
+        if shortened_link:
+            await message.reply(f"Here is the shortened link for easy access: {shortened_link}")
+            
 
 @Bot.on_message(filters.command("token"))
 async def token_command(client: Client, message: Message):
