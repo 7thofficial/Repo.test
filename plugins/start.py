@@ -153,6 +153,17 @@ async def is_valid_token(user_id, received_token):
         print("No Token Found for User!")
     return False
 
+
+async def save_received_token(user_id, received_token):
+    # Simulated database operation: Replace this with your actual database operation
+    # Insert or update the token for the user in the MongoDB database
+    expiration_time = datetime.now() + timedelta(days=1)  # Set expiration time to 1 day
+    await tokens_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"token": received_token, "expiration_time": expiration_time}},
+        upsert=True
+    )
+    print(f"Saved Received Token: {received_token} for User ID: {user_id}")
     
     
 async def reset_token_verification(user_id):
@@ -193,10 +204,11 @@ async def start_command(client: Client, message: Message):
         
         if short_link:
             await message.reply(f"Welcome! Your token has been generated. Use this link to verify: {short_link}")
+            # Save the received token into the database
+            await save_received_token(user_id, token)
         else:
             await message.reply("There was an error generating the verification link. Please try again later.")
             
-
 async def start_process(client: Client, message: Message):
     user_id = message.from_user.id
 
