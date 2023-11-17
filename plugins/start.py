@@ -175,13 +175,14 @@ async def get_stored_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     return stored_token_info["token"] if stored_token_info else None
 
-# ... (existing code)
+
 
 async def get_received_token(user_id):
     stored_token_info = await tokens_collection.find_one({"user_id": user_id})
     if stored_token_info:
         return stored_token_info.get("received_token")
     return None
+
 
 @Bot.on_message(filters.command('start'))
 async def start_command(client: Client, message: Message):
@@ -204,9 +205,20 @@ async def start_command(client: Client, message: Message):
             await start_process(client, message)
         else:
             print(f"User {user_id} tried with an invalid token: {received_token}")
-            await message.reply("Sorry, the token is invalid. Please generate a new one.")
-            await message.reply("Please verify your token using /check.")
+            await message.reply("Sorry, the token is invalid. Please verify your token using /check.")
     else:
+        # Get the received token from the database
+        stored_token_info = await tokens_collection.find_one({"user_id": user_id})
+        if stored_token_info:
+            received_token = stored_token_info.get("received_token")
+            if received_token:
+                # Check if the received token is valid without generating a new one
+                if await is_valid_token(user_id, received_token):
+                    await message.reply("Welcome back! Your token is still valid.")
+                    await start_process(client, message)
+                    return
+
+        await message.reply("You need a valid token. Generating a new token...")
         # Generate a new token if the user doesn't have a valid one
         token = await generate_token(user_id)
         print(f"Generated token for user {user_id}: {token}")
@@ -220,6 +232,7 @@ async def start_command(client: Client, message: Message):
             await message.reply(f"Welcome! Your token has been generated. Use this link to verify: {short_link}")
         else:
             await message.reply("There was an error generating the verification link. Please try again later.")
+            
 
 async def time_remaining_for_token_expiration(user_id):
     received_token = await get_received_token(user_id)
