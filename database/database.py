@@ -2,6 +2,8 @@ import pymongo, os
 from config import DB_URI, DB_NAME
 
 #-------------------------------------
+bot_loop = bot.loop
+bot_name = bot.me.username
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
