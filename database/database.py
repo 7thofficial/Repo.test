@@ -65,8 +65,6 @@ class DbManager:
         await self.__db.access_token.delete_many({})
         self.__conn.close
 
-if DB_URI:
-    bot_loop.run_until_complete(DbManager().db_load())
 
 async def present_user(user_id : int):
     found = user_data.find_one({'_id': user_id})
