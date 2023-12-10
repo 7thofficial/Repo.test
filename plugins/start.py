@@ -86,8 +86,6 @@ class DbManager:
         await self.__db.access_token.delete_many({})
         self.__conn.close
 
-if DB_URI:
-    bot_loop.run_until_complete(DbManager().db_load())
 
 def get_readable_time(seconds):
     periods = [('d', 86400), ('h', 3600), ('m', 60), ('s', 1)]
