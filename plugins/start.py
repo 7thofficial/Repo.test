@@ -5,13 +5,13 @@ import logging
 import secrets
 from datetime import datetime, timedelta
 import aiohttp
+from uuid import uuid4
 import requests
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 from motor import motor_asyncio
-
 from bot import Bot
 from config import (
     DB_URI, DB_NAME, ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
@@ -29,7 +29,17 @@ SHORT_API = "d20fd8cb82117442858d7f2acdb75648e865d2f9"
 # Token expiration period (1 day in seconds)
 TOKEN_EXPIRATION_PERIOD = 86
 
-async def start(_, message):
+def get_readable_time(seconds):
+    periods = [('d', 86400), ('h', 3600), ('m', 60), ('s', 1)]
+    result = ''
+    for period_name, period_seconds in periods:
+        if seconds >= period_seconds:
+            period_value, seconds = divmod(seconds, period_seconds)
+            result += f'{int(period_value)}{period_name}'
+    return result
+
+@Bot.on_message(filters.command('startt'))
+async def start(client: Client, message: Message):
     if len(message.command) > 1 and len(message.command[1]) == 36:
         userid = message.from_user.id
         input_token = message.command[1]
@@ -52,7 +62,7 @@ async def start(_, message):
         if DATABASE_URL:
             await DbManager().update_user_tdata(userid, token, ttime)
         msg = 'Token refreshed successfully!\n\n'
-        msg += f'Validity: {get_readable_time(int(config_dict["TOKEN_TIMEOUT"]))}'
+        msg += f'Validity: {get_readable_time(int(TOKEN_EXPIRATION_PERIOD))}'
         return await sendMessage(message, msg)
     elif config_dict['DM_MODE'] and message.chat.type != message.chat.type.SUPERGROUP:
         start_string = 'Bot Started.\n' \
